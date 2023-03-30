@@ -1,2 +1,4 @@
 .idea
 *.sqlite
+data/*
+alembic.ini
