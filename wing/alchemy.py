@@ -2,7 +2,9 @@ from pathlib import Path
 import configparser
 from sqlalchemy import create_engine
 
-config_ini_file = Path("/home/orkan/projekty/parrot/alembic.ini")
+PROJECT_PATH = Path(__file__).parents[1]
+
+config_ini_file = PROJECT_PATH.joinpath("alembic.ini")
 
 config = configparser.ConfigParser()
 config.read(config_ini_file)

@@ -2,6 +2,9 @@
 from wing.models import Book
 from wing.processing import flashcard_list
 
+DEFAULT_BOOK_NR = 1
+DEFAULT_LINE_NR = 0
+
 
 def show_results(total, correct):
     print(f"\n========== Correct words: {correct}/{total} ==========\n")
@@ -13,11 +16,11 @@ def print_all_books():
         print(f"{book.id}. {book.title} - {book.author}")
 
 
-def learn(book_id) -> tuple[int, int]:
+def learn(book_id: int, start_line: int) -> tuple[int, int]:
     correct = 0
     total = 0
 
-    for flashcard in flashcard_list(book_id):
+    for flashcard in flashcard_list(book_id)[start_line:]:
         try:
             your_response = input(f"{flashcard.text} - ").strip()
         except KeyboardInterrupt:
@@ -38,8 +41,11 @@ def learn(book_id) -> tuple[int, int]:
 
 def main():
     print_all_books()
-    book_id = int(input("Choose book number: ").strip())
-    total, correct = learn(book_id)
+    book_id_input = input(f"Choose book number[{DEFAULT_BOOK_NR}]: ").strip()
+    book_id = int(book_id_input) if book_id_input else DEFAULT_BOOK_NR
+    start_line_input = input(f"Begin from line number[{DEFAULT_LINE_NR}]: ").strip()
+    start_line = int(start_line_input) if start_line_input else DEFAULT_LINE_NR
+    total, correct = learn(book_id, start_line)
     show_results(total, correct)
 
 

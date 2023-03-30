@@ -8,9 +8,10 @@ from pathlib import Path
 
 import typer
 
+from wing.alchemy import PROJECT_PATH
 from wing.models import Book, BookWord, Sentence, Word
 
-BOOKS_PATH = Path("book_list.csv")
+BOOKS_PATH = PROJECT_PATH.joinpath("data", "book_list.csv")
 
 
 def find_book(filename: str) -> tuple[str, str] or None:
