@@ -12,7 +12,7 @@ Run alembic migrations:
 
 To get sentences list you have to:
 * translate using https://translate.google.com/?sl=en&tl=pl&op=translate
-* sava translations
+* save translations
 * export translations to docs.google.com
 * import as csv separated by `;`
 * load to db using `./load_translations.py file.csv`
