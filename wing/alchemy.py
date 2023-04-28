@@ -6,6 +6,9 @@ PROJECT_PATH = Path(__file__).parents[1]
 
 config_ini_file = PROJECT_PATH.joinpath("alembic.ini")
 
+# File book_list.csv contains 4 columns: translations.csv;title;author;path_to_book.
+BOOKS_PATH = PROJECT_PATH.joinpath("data", "book_list.csv")
+
 config = configparser.ConfigParser()
 config.read(config_ini_file)
 
