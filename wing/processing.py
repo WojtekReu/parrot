@@ -1,12 +1,15 @@
 import csv
 import itertools
+import json
 import re
 from typing import Generator, Optional
 
 import nltk
+import requests
+from urllib3.exceptions import InsecureRequestWarning
 
 from .models import Book, BookWord, Context, Sentence, Word, WordSentence
-from .alchemy import BOOKS_PATH
+from .alchemy import API_URL, BOOKS_PATH, SECRET_KEY
 from .structure import (
     BookContent,
     DETERMINERS,
@@ -17,6 +20,9 @@ from .structure import (
     TYPE_SENTENCE,
     TYPE_WORD,
 )
+
+# Suppress only the single warning from urllib3 needed.
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
 
 def flashcard_list(book_id: int) -> list[Flashcard]:
@@ -325,3 +331,79 @@ def learn(book_id: int, start_line: int) -> tuple[int, int]:
                     print(f"{context.book_id}, {nr}: {context.content}")
 
     return total, correct
+
+
+def find_word_in_context(word_str: str) -> tuple[Word, list[str]]:
+    """
+    find word in context
+    """
+    word = Word(key_word=word_str)
+    word.find_first()
+    context_list = []
+    if word.id:
+        for nr, context in enumerate(get_context_for_word(word.id), start=1):
+            context_list.append(f"{context.book_id}, {nr}: {context.content}")
+    return word, context_list
+
+
+def translate(word: Word) -> list[str]:
+    """
+    Translate word using dictionary API
+    """
+    headers = {
+        "X-Secret": SECRET_KEY,
+    }
+    lang = "enpl"
+    url = f"{API_URL}?l={lang}&q={word.key_word}"
+    response = requests.get(
+        url=url,
+        headers=headers,
+        verify=False,
+    )
+
+    if response.status_code != 200:
+        print(f"Response status: {response.status_code}")
+        print(response.text)
+        return []
+    try:
+        response_json = json.loads(response.content)
+    except TypeError:
+        print(response.raw)
+        raise TypeError(response.raw)
+
+    translations = []
+    for row in response_json:
+        for hit in row["hits"]:
+            for rom in hit["roms"]:
+                for arab in rom["arabs"]:
+                    for translation in arab["translations"]:
+                        target = cut_html(translation["target"])
+                        translations.append(target)
+
+    return translations
+
+
+def cut_html(source: str) -> str:
+    """
+    Dictionary API return word and some html after word. Cut html after word.
+    """
+    words = []
+    for word in source.split():
+        if word.startswith("<") or word.startswith("["):
+            break
+        words.append(word)
+    return " ".join(words)
+
+
+def save_translations(word: Word, translations: list):
+    """
+    Add translation to words translations.
+    """
+    is_changed = False
+    for translation in translations:
+        if translation not in word.translations:
+            is_changed = True
+            word.translations.append(translation)
+
+    if is_changed:
+        word.save()

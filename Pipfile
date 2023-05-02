@@ -9,6 +9,7 @@ alembic = "*"
 typer = "*"
 nltk = "*"
 numpy = "*"
+requests = "*"
 
 [dev-packages]
 pytest = "*"
