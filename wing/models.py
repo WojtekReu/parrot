@@ -1,4 +1,4 @@
-from typing import List, Generator, Self, Optional
+from typing import List, Generator
 from sqlalchemy import ForeignKey, JSON, select, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
@@ -93,7 +93,7 @@ class Sentence(Base):
         return f"<Sentence {self.id}: {self.text[:20]}>"
 
     @classmethod
-    def get_by_book(cls, book_id: int) -> Generator[Self]:
+    def get_by_book(cls, book_id: int) -> Generator:
         stmt = select(cls).where(cls.book_id == book_id).order_by(cls.order)
         with Session(engine) as s:
             for sentence_tuple in s.execute(stmt).all():
@@ -129,7 +129,7 @@ class Word(Base):
         return f"<Word {self.id}: {self.key_word}>"
 
     @classmethod
-    def get_by_book(cls, book_id: int) -> Generator[Self]:
+    def get_by_book(cls, book_id: int) -> Generator:
         stmt = (
             select(cls)
             .join(BookWord)
@@ -172,7 +172,7 @@ class Context(Base):
         return f"<Context {self.id}: {self.content[:20]}>"
 
     @classmethod
-    def get_by_word(cls, word_id: int) -> Generator[Self]:
+    def get_by_word(cls, word_id: int) -> Generator:
         stmt = (
             select(cls)
             .where(cls.word_id == word_id)

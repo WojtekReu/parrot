@@ -44,7 +44,7 @@ def flashcard_list(book_id: int) -> list[Flashcard]:
     return flashcards
 
 
-def get_context_for_word(word_id: int) -> Generator[Context]:
+def get_context_for_word(word_id: int) -> Generator:
     """
     Get all sentences from book that match to this word.
     """
