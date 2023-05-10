@@ -8,8 +8,9 @@ import nltk
 import requests
 from urllib3.exceptions import InsecureRequestWarning
 
+from .logging import write_logs
 from .models import Book, BookWord, Context, Sentence, Word, WordSentence
-from .alchemy import API_URL, BOOKS_PATH, SECRET_KEY
+from .alchemy import API_URL, BOOKS_PATH, PONS_SECRET_KEY
 from .structure import (
     BookContent,
     DETERMINERS,
@@ -157,7 +158,7 @@ def find_words_in_book(book):
         word_stem = stemmer.stem(word.key_word)
         sentences_count = Context.count_for_word(word.id)
         if sentences_count > SENTENCES_LIMIT:
-            break
+            continue
         for content in book_contents:
             if word_stem in content.stems:
                 if sentences_count > SENTENCES_LIMIT:
@@ -346,12 +347,12 @@ def find_word_in_context(word_str: str) -> tuple[Word, list[str]]:
     return word, context_list
 
 
-def translate(word: Word) -> list[str]:
+def translate(word: Word, log_output) -> list[tuple[str, str]]:
     """
     Translate word using dictionary API
     """
     headers = {
-        "X-Secret": SECRET_KEY,
+        "X-Secret": PONS_SECRET_KEY,
     }
     lang = "enpl"
     url = f"{API_URL}?l={lang}&q={word.key_word}"
@@ -361,12 +362,42 @@ def translate(word: Word) -> list[str]:
         verify=False,
     )
 
-    if response.status_code != 200:
+    if response.status_code == 204:
+        print(f"{url = }")
+        print("Response status: 204 No content")
+        return []
+
+    elif response.status_code == 403:
+        print(f"{url = }")
+        print("Response status: 404 - Forbidden")
+        return []
+
+    elif response.status_code == 504:
+        print(f"{url = }")
+        print("Response status: 504 - server has problem. Try later.")
+        if log_output and response.text:
+            logs = {
+                "url": url,
+                "response": response.text,
+            }
+            write_logs(logs)
+        return []
+
+    elif response.status_code != 200:
+        print(f"{url = }")
         print(f"Response status: {response.status_code}")
-        print(response.text)
+        if log_output and response.text:
+            logs = {
+                "url": url,
+                "response": response.text,
+            }
+            write_logs(logs)
         return []
     try:
         response_json = json.loads(response.content)
+        if log_output and response_json:
+            write_logs(response_json[0])
+
     except TypeError:
         print(response.raw)
         raise TypeError(response.raw)
@@ -377,22 +408,20 @@ def translate(word: Word) -> list[str]:
             for rom in hit["roms"]:
                 for arab in rom["arabs"]:
                     for translation in arab["translations"]:
+                        source = cut_html(translation["source"])
                         target = cut_html(translation["target"])
-                        translations.append(target)
+                        translations.append((source, target))
 
     return translations
 
 
 def cut_html(source: str) -> str:
     """
-    Dictionary API return word and some html after word. Cut html after word.
+    Dictionary API return word and some description in 'span' tags. Remove span content. For tag
+    'strong' remove tag with attributes but leave his content.
     """
-    words = []
-    for word in source.split():
-        if word.startswith("<") or word.startswith("["):
-            break
-        words.append(word)
-    return " ".join(words)
+    source = re.sub(r" <span .*>.*</span>", "", source)
+    return re.sub(r"<.*?>", "", source)
 
 
 def save_translations(word: Word, translations: list):
@@ -400,8 +429,9 @@ def save_translations(word: Word, translations: list):
     Add translation to words translations.
     """
     is_changed = False
-    for translation in translations:
-        if translation not in word.translations:
+    for translation_tuple in translations:
+        source, translation = translation_tuple
+        if source == word.key_word and translation not in word.translations:
             is_changed = True
             word.translations.append(translation)
 
