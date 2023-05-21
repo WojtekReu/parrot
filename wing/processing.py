@@ -12,9 +12,11 @@ from .logging import write_logs
 from .models import Book, BookWord, Context, Sentence, Word, WordSentence
 from .alchemy import API_URL, BOOKS_PATH, PONS_SECRET_KEY
 from .structure import (
+    ADVERBS,
     BookContent,
     DETERMINERS,
     Flashcard,
+    PREPOSITIONS,
     PRONOUNS,
     SENTENCES_LIMIT,
     tag_to_pos,
@@ -63,7 +65,7 @@ def get_pattern(word: str) -> str:
     """
     Pattern to find sentences with this word in book
     """
-    return r'([^.?"]*?' + word + r'*[^.?"]*[.?]?)'
+    return r'([^.?!"]*\s' + word + r'[^.?!"]*[.?!]?)|(^' + word + r'[^.?!"]*[.?!]?)'
 
 
 def find_book(filename: str) -> Optional[Book]:
@@ -122,6 +124,15 @@ def prepare_book_sentences(stemmer, book: Book) -> list[BookContent]:
     return book_contents
 
 
+def get_book_content(book: Book) -> str:
+    """
+    Get whole book content
+    """
+    with open(book.path) as f:
+        book_content = f.read()
+    return book_content
+
+
 def connect_words_to_sentences():
     """
     Create relations between words and sentences
@@ -150,30 +161,26 @@ def find_words_in_book(book):
     Find words in book using stem word for matching.
     """
     stemmer = nltk.PorterStemmer()
-    book_contents = prepare_book_sentences(stemmer, book)
-    print(f"Loaded whole book '{book.title}' in parts: {len(book_contents)}")
+    # book_contents = prepare_book_sentences(stemmer, book)
+    book_content = get_book_content(book)
+    print(f"Loaded whole book '{book.title}', len: {len(book_content)}")
 
     # for word in Word.get_by_book(book.id):
     for word in Word.all():
+        output = [word.key_word]
         word_stem = stemmer.stem(word.key_word)
-        sentences_count = Context.count_for_word(word.id)
-        if sentences_count > SENTENCES_LIMIT:
-            continue
-        for content in book_contents:
-            if word_stem in content.stems:
-                if sentences_count > SENTENCES_LIMIT:
-                    break
-                sentences_count += 1
+        pattern = get_pattern(word_stem)
+        results = re.findall(pattern, book_content, re.IGNORECASE)
+        len_stem = len(results)
+        len_results = '-'
+        if not word.key_word.startswith(word_stem):
+            pattern = get_pattern(word.key_word)
+            results += re.findall(pattern, book_content, re.IGNORECASE)
+            len_results = len(results)
 
-                pattern = get_pattern(word.key_word)
-                results = re.findall(pattern, content.sentence, re.IGNORECASE)
-                if not results:
-                    pattern = get_pattern(word_stem)
-                    results = re.findall(pattern, content.sentence, re.IGNORECASE)
-                    if not results:
-                        results = [content.sentence[:255]]
-
-                for sentence in results:
+        for parts in results:
+            for sentence in parts:
+                if sentence:
                     context = Context(
                         content=sentence.strip(),
                         word_id=word.id,

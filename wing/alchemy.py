@@ -36,3 +36,15 @@ PONS_SECRET_KEY = os.environ.get("PONS_SECRET_KEY", '')
 
 # Url to pons dictionary API
 API_URL = "https://api.pons.com/v1/dictionary"
+
+# Directory where nltk data is stored
+NLTK_DATA_PREFIX = Path("/usr/local/share/nltk_data")
+
+# Pronouns list file
+PRONOUNS_FILE = NLTK_DATA_PREFIX.joinpath("corpora", "dolch", "pronouns")
+
+# Prepositions list file
+PREPOSITIONS_FILE = NLTK_DATA_PREFIX.joinpath("corpora", "dolch", "prepositions")
+
+# Adverbs list file
+ADVERBS_FILE = NLTK_DATA_PREFIX.joinpath("corpora", "dolch", "adverbs")

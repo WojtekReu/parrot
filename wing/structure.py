@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
+from wing.alchemy import ADVERBS_FILE, PREPOSITIONS_FILE, PRONOUNS_FILE
 
 TYPE_WORD = 'W'
 TYPE_SENTENCE = 'S'
@@ -8,8 +9,16 @@ DEFAULT_BOOK_NR = 1
 DEFAULT_LINE_NR = 0
 
 SENTENCES_LIMIT = 10
-DETERMINERS = "the", "a"
-PRONOUNS = "i", "we", "you", "they", "he", "she", "it"
+DETERMINERS = "the", "a", "an"
+
+with open(ADVERBS_FILE) as f:
+    ADVERBS = (adverbs for adverbs in f.read().split())
+
+with open(PRONOUNS_FILE) as f:
+    PRONOUNS = (pronoun for pronoun in f.read().split())
+
+with open(PREPOSITIONS_FILE) as f:
+    PREPOSITIONS = (preposition for preposition in f.read().split())
 
 
 @dataclass
