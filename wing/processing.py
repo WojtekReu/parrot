@@ -81,9 +81,7 @@ def find_book(filename: str) -> Optional[Book]:
                     author=row[2],
                     path=row[3],  # path to book in personal library if library contain this book
                 )
-                book.find_first()
-                if not book.id:
-                    book.save()
+                book.save_if_not_exists()
                 return book
 
         raise ValueError(f"Path {filename} not in {BOOKS_PATH}")
@@ -108,19 +106,22 @@ def prepare_book_sentences(stemmer, book: Book) -> list[BookContent]:
     Get whole book as list of BookContent
     """
     book_contents = []
-    with open(book.path) as f:
-        while True:
-            line = f.readline()
-            if not line:
-                break
-            line = line.strip()
-            if line:
-                book_contents.append(
-                    BookContent(
-                        line,
-                        tuple(stemmer.stem(word) for word in nltk.word_tokenize(line)),
-                    )
+    book_content = get_book_content(book)
+
+    for sentence in nltk.sent_tokenize(book_content):
+        if sentence:
+            words = []
+            stems = []
+            for word in nltk.word_tokenize(sentence):
+                words.append(word)
+                stems.append(stemmer.stem(word))
+            book_contents.append(
+                BookContent(
+                    sentence,
+                    tuple(words),
+                    tuple(stems),
                 )
+            )
     return book_contents
 
 
@@ -149,9 +150,7 @@ def connect_words_to_sentences():
                     word_id=word.id,
                     sentence_id=sentence_tuple[0],
                 )
-                ws.find_first()
-                if not ws.id:
-                    ws.save()
+                ws.save_if_not_exists()
 
     print("Connecting words to sentences done.")
 
@@ -161,39 +160,36 @@ def find_words_in_book(book):
     Find words in book using stem word for matching.
     """
     stemmer = nltk.PorterStemmer()
-    # book_contents = prepare_book_sentences(stemmer, book)
-    book_content = get_book_content(book)
-    print(f"Loaded whole book '{book.title}', len: {len(book_content)}")
+    book_contents = prepare_book_sentences(stemmer, book)
+    print(f"Loaded whole book '{book.title}': {len(book_contents)} sentences.")
 
     # for word in Word.get_by_book(book.id):
     for word in Word.all():
-        output = [word.key_word]
         word_stem = stemmer.stem(word.key_word)
-        pattern = get_pattern(word_stem)
-        results = re.findall(pattern, book_content, re.IGNORECASE)
-        len_stem = len(results)
-        len_results = '-'
-        if not word.key_word.startswith(word_stem):
-            pattern = get_pattern(word.key_word)
-            results += re.findall(pattern, book_content, re.IGNORECASE)
-            len_results = len(results)
+        for content in book_contents:
+            if word_stem in content.stems:
+                context = Context(
+                    content=content.sentence,
+                    word_id=word.id,
+                    book_id=book.id,
+                )
+                context.save_if_not_exists()
 
-        for parts in results:
-            for sentence in parts:
-                if sentence:
+        if not word.key_word.startswith(word_stem):
+            for content in book_contents:
+                if word.key_word in content.words:
                     context = Context(
-                        content=sentence.strip(),
+                        content=content.sentence,
                         word_id=word.id,
                         book_id=book.id,
                     )
-                    context.find_first()
-                    if not context.id:
-                        context.save()
+                    context.save_if_not_exists()
 
 
 def find_books():
     """
     For any book in db check is in library
+    Replace “ and ” to " in all books
     """
     for book in Book.all():
         if book.path:
@@ -256,7 +252,7 @@ def load_file(filename_path):
             col1 = lemmatize(lemmatizer, col1)
             if len(col1.strip().split()) == 1:
                 word = Word(key_word=col1)
-                word.find_first()
+                word.match_first()
                 if word.id:
                     if col2 not in word.translations:
                         word.translations.append(col2)
@@ -265,7 +261,7 @@ def load_file(filename_path):
                         book_id=book.id,
                         word_id=word.id,
                     )
-                    book_word.find_first()
+                    book_word.match_first()
                     if not book_word.id:
                         book_word.order = next(order)
                         book_word.save()
@@ -275,7 +271,7 @@ def load_file(filename_path):
                         book_id=book.id,
                         word_id=word.save(),
                     )
-                    book_word.find_first()
+                    book_word.match_first()
                     if not book_word.id:
                         book_word.order = next(order)
                         book_word.save()
@@ -285,7 +281,7 @@ def load_file(filename_path):
                     book_id=book.id,
                     text=col1,
                 )
-                sentence.find_first()
+                sentence.match_first()
                 if not sentence.id:
                     sentence.order = next(order)
                     sentence.translations = [col2]
@@ -339,19 +335,6 @@ def learn(book_id: int, start_line: int) -> tuple[int, int]:
                     print(f"{context.book_id}, {nr}: {context.content}")
 
     return total, correct
-
-
-def find_word_in_context(word_str: str) -> tuple[Word, list[str]]:
-    """
-    find word in context
-    """
-    word = Word(key_word=word_str)
-    word.find_first()
-    context_list = []
-    if word.id:
-        for nr, context in enumerate(get_context_for_word(word.id), start=1):
-            context_list.append(f"{context.book_id}, {nr}: {context.content}")
-    return word, context_list
 
 
 def translate(word: Word, log_output) -> list[tuple[str, str]]:

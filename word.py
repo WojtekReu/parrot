@@ -1,23 +1,26 @@
 #!/usr/bin/env python
-"""
-Show word context and translations from configured API
-"""
+
 import typer
 
-from wing.processing import find_word_in_context, save_translations, translate
+from wing.models import Sentence, Word
+from wing.processing import save_translations, translate
+from wing.views import word_context, word_sentences
 
 
-def main(word: str, debug: bool = False):
-    word, context = find_word_in_context(word)
-    print(f"Word source: {word.key_word}")
-    for row in context:
-        print(row)
+def main(key_word: str):
+    """
+    Show word translation, sentence containing word and book context
+    """
+    word = Word(key_word=key_word)
+    word.match_first()
+    translations = '; '.join(word.translations) if word.translations else '----'
+    print(f"Word source: `{word.key_word}` -> {translations}")
 
-    translations = translate(word, debug)
-    if translations and word.id:
-        save_translations(word, translations)
-        for translation_tuple in translations:
-            print(f"{translation_tuple[0]} \t -> \t {translation_tuple[1]}")
+    print(word_sentences(word))
+    output_word_context = word_context(word)
+    if output_word_context:
+        print("---------------- context in books ----------------")
+        print(output_word_context)
 
 
 if __name__ == "__main__":

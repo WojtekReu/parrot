@@ -1,4 +1,4 @@
-from typing import List, Generator
+from typing import List, Generator, Optional
 from sqlalchemy import ForeignKey, JSON, select, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
@@ -11,6 +11,22 @@ class Base(DeclarativeBase):
     """
     id: Mapped[int] = mapped_column(primary_key=True)
 
+    def _set(self):
+        """
+        Set attributes from object to model
+        """
+        table_name = self.__mapper__.local_table.description
+        self.table = self.__mapper__.local_table
+
+        self.fns_where = []
+        self.column_names = []
+        for column in self.metadata.tables[table_name].columns:
+            self.column_names.append(column.description)
+            value = getattr(self, column.description)
+            if value:
+                fn_where = lambda x, y: x == y
+                self.fns_where.append(fn_where(column, value))
+
     @classmethod
     def all(cls) -> Generator:
         """
@@ -21,29 +37,17 @@ class Base(DeclarativeBase):
             for instance_tuple in s.execute(stmt).all():
                 yield instance_tuple[0]
 
-    def find_first(self):
+    def match_first(self):
         """
-        Set all attributes when found
+        Set all model attributes when matched object found
         """
-        table_name = self.__mapper__.local_table.description
-        table = self.__mapper__.local_table
-
-        fns_where = []
-        column_names = []
-        for column in self.metadata.tables[table_name].columns:
-            column_names.append(column.description)
-            value = getattr(self, column.description)
-            if value:
-                fn_where = lambda x, y: x == y
-                fns_where.append(fn_where(column, value))
-
-        stmt = select(table).where(*fns_where)
+        self._set()
+        stmt = select(self.table).where(*self.fns_where)
 
         with Session(engine) as s:
-            results = s.execute(stmt).all()
-            if results:
-                first = results[0]
-                for column_name, value in zip(column_names, first):
+            result = s.execute(stmt).first()
+            if result:
+                for column_name, value in zip(self.column_names, result):
                     setattr(self, column_name, value)
 
     def save(self):
@@ -57,6 +61,14 @@ class Base(DeclarativeBase):
                 s.add(self)
             s.commit()
             return self.id
+
+    def save_if_not_exists(self):
+        """
+        Save object if not exists in DB
+        """
+        self.match_first()
+        if not self.id:
+            self.save()
 
 
 class Book(Base):
@@ -94,7 +106,30 @@ class Sentence(Base):
 
     @classmethod
     def get_by_book(cls, book_id: int) -> Generator:
+        """
+        Get sentences ordered by occurrence in text.
+        """
         stmt = select(cls).where(cls.book_id == book_id).order_by(cls.order)
+        with Session(engine) as s:
+            for sentence_tuple in s.execute(stmt).all():
+                yield sentence_tuple[0]
+
+    @classmethod
+    def get_by_word(cls, word_id: int) -> Generator:
+        """
+        Get sentences ordered by book_id next by occurrence in text.
+        """
+        stmt = (
+            select(cls)
+            .where(
+                cls.id == WordSentence.sentence_id,
+                WordSentence.word_id == word_id,
+            )
+            .order_by(
+                cls.book_id,
+                cls.order,
+            )
+        )
         with Session(engine) as s:
             for sentence_tuple in s.execute(stmt).all():
                 yield sentence_tuple[0]
@@ -143,6 +178,15 @@ class Word(Base):
                 word.order = word_tuple[1]
                 yield word
 
+    @classmethod
+    def get_by_key_word(cls, key_word) -> Optional[tuple]:
+        stmt = (
+            select(cls)
+            .where(cls.key_word == key_word)
+        )
+        with Session(engine) as s:
+            return s.execute(stmt).first()
+
 
 class WordSentence(Base):
     """
@@ -180,12 +224,3 @@ class Context(Base):
         with Session(engine) as s:
             for context_tuple in s.execute(stmt).all():
                 yield context_tuple[0]
-
-    @classmethod
-    def count_for_word(cls, word_id):
-        stmt = (
-            select(cls)
-            .where(cls.word_id == word_id)
-        )
-        with Session(engine) as s:
-            return len(s.execute(stmt).all())

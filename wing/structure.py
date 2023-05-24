@@ -33,6 +33,7 @@ class Flashcard:
 @dataclass
 class BookContent:
     sentence: str
+    words: tuple
     stems: tuple
 
 
