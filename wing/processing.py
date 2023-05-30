@@ -9,7 +9,16 @@ import requests
 from urllib3.exceptions import InsecureRequestWarning
 
 from .logging import write_logs
-from .models import Book, BookWord, Context, Sentence, Word, WordSentence
+from .models import (
+    Book,
+    BookWord,
+    Context,
+    ParrotSettings,
+    Sentence,
+    Word,
+    WordSentence,
+    max_order_for_book_id,
+)
 from .alchemy import API_URL, BOOKS_PATH, PONS_SECRET_KEY
 from .structure import (
     ADVERBS,
@@ -142,7 +151,7 @@ def connect_words_to_sentences():
     sentences = prepare_sentences(stemmer)
     print(f"Loaded {len(sentences)} sentences.")
 
-    for word in Word.all():
+    for word in Word.newer_than(ParrotSettings.get_last_word_id()):
         word_stem = stemmer.stem(word.key_word)
         for sentence_tuple in sentences:
             if word_stem in sentence_tuple[1]:
@@ -164,7 +173,7 @@ def find_words_in_book(book):
     print(f"Loaded whole book '{book.title}': {len(book_contents)} sentences.")
 
     # for word in Word.get_by_book(book.id):
-    for word in Word.all():
+    for word in Word.newer_than(ParrotSettings.get_last_word_id()):
         word_stem = stemmer.stem(word.key_word)
         for content in book_contents:
             if word_stem in content.stems:
@@ -194,6 +203,8 @@ def find_books():
     for book in Book.all():
         if book.path:
             find_words_in_book(book)
+
+    ParrotSettings.update_last_settings_id()
 
 
 def filter_source(words: list) -> tuple[list, str] | None:
@@ -237,12 +248,13 @@ def lemmatize(lemmatizer, source: str) -> str:
     return source
 
 
-def load_file(filename_path):
+def load_translations(filename_path):
     """
     Load csv translation file to db
     """
     book = find_book(filename_path.parts[-1])
-    order = itertools.count(start=1)
+    max_order = max_order_for_book_id(book.id) + 1
+    order = itertools.count(start=max_order)
     lemmatizer = nltk.WordNetLemmatizer()
 
     with open(filename_path) as f:

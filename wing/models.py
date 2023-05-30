@@ -1,8 +1,11 @@
 from typing import List, Generator, Optional
-from sqlalchemy import ForeignKey, JSON, select, String
+from sqlalchemy import ForeignKey, JSON, select, String, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
+from sqlalchemy.sql.expression import func
 
 from .alchemy import engine
+
+PARROT_SETTINGS_ID = 1
 
 
 class Base(DeclarativeBase):
@@ -69,6 +72,26 @@ class Base(DeclarativeBase):
         self.match_first()
         if not self.id:
             self.save()
+
+    @classmethod
+    def newer_than(cls, obj_id):
+        """
+        Find objects which ID is larger than give ID
+        """
+        stmt = select(cls).where(cls.id > obj_id)
+        with Session(engine) as s:
+            for instance_tuple in s.execute(stmt).all():
+                yield instance_tuple[0]
+
+    @classmethod
+    def get_max_id(cls) -> int:
+        """
+        Return max id or 0 for `id` column in the model
+        """
+        stmt = select(func.max(cls.id))
+        with Session(engine) as s:
+            row = s.execute(stmt).first()
+            return row[0] if row else 0
 
 
 class Book(Base):
@@ -224,3 +247,53 @@ class Context(Base):
         with Session(engine) as s:
             for context_tuple in s.execute(stmt).all():
                 yield context_tuple[0]
+
+
+class ParrotSettings(Base):
+    """
+    Dynamic global settings for parrot project.
+    """
+    __tablename__ = "parrot_settings"
+    last_word_id: Mapped[int] = mapped_column(default=0, nullable=False)
+
+    @classmethod
+    def get_last_word_id(cls) -> int:
+        """
+        Get max Word id from settings.
+        """
+        stmt = select(cls).where(cls.id == PARROT_SETTINGS_ID)
+        with Session(engine) as s:
+            row = s.execute(stmt).first()[0]
+            return row.last_word_id
+
+    @classmethod
+    def update_last_settings_id(cls):
+        """
+        Get max id from Word model and save it to settings.
+        """
+        last_word_id = Word.get_max_id()
+        with Session(engine) as s:
+            stmt_update = (
+                update(cls)
+                .where(cls.id == PARROT_SETTINGS_ID)
+                .values({"last_word_id": last_word_id})
+            )
+            s.execute(stmt_update)
+            s.commit()
+
+
+def max_order_for_book_id(book_id: int) -> int:
+    """
+    Return max order value for BookWord and Sentence models.
+    """
+    stmt = select(func.max(BookWord.order)).where(BookWord.book_id == book_id)
+    with Session(engine) as s:
+        row = s.execute(stmt).first()
+        wb_max = row[0] if row else 0
+
+    stmt = select(func.max(Sentence.order)).where(Sentence.book_id == book_id)
+    with Session(engine) as s:
+        row = s.execute(stmt).first()
+        s_max = row[0] if row else 0
+
+    return max(wb_max, s_max)

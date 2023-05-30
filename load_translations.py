@@ -6,7 +6,7 @@ from pathlib import Path
 
 import typer
 
-from wing.processing import load_file
+from wing.processing import load_translations
 
 
 def main(
@@ -15,7 +15,7 @@ def main(
         help="csv file with translations: pl; eng semicolon separated",
     )
 ):
-    load_file(filename_path)
+    load_translations(filename_path)
 
 
 if __name__ == "__main__":
