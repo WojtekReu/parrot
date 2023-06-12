@@ -10,12 +10,13 @@ from wing.processing import load_translations
 
 
 def main(
+    book_id: int,
     filename_path: Path = typer.Argument(
         ...,
         help="csv file with translations: pl; eng semicolon separated",
     )
 ):
-    load_translations(filename_path)
+    load_translations(book_id, filename_path)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,8 @@ from wing.processing import connect_words_to_sentences, find_books
 
 
 def main():
+    print("TODO: this command should be refactored")
+    return
     connect_words_to_sentences()
     find_books()
 

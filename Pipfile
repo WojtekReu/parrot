@@ -10,6 +10,8 @@ typer = "*"
 nltk = "*"
 numpy = "*"
 requests = "*"
+asyncpg = "*"
+psycopg2 = "*"
 
 [dev-packages]
 pytest = "*"

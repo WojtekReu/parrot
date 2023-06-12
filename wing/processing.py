@@ -1,8 +1,13 @@
+import asyncio
 import csv
 import itertools
 import json
 import re
-from typing import Generator, Optional
+import queue
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable, Coroutine, Generator, Optional
 
 import nltk
 import requests
@@ -11,20 +16,22 @@ from urllib3.exceptions import InsecureRequestWarning
 from .logging import write_logs
 from .models import (
     Book,
+    BookContent,
     BookWord,
     Context,
     ParrotSettings,
     Sentence,
     Word,
     WordSentence,
-    max_order_for_book_id,
+    max_order_for_book_id, Bword, BwordBookContent,
 )
 from .alchemy import API_URL, BOOKS_PATH, PONS_SECRET_KEY
 from .structure import (
     ADVERBS,
-    BookContent,
     DETERMINERS,
     Flashcard,
+    MIN_STEM_WORD,
+    MAX_STEM_OCCURRENCE,
     PREPOSITIONS,
     PRONOUNS,
     SENTENCES_LIMIT,
@@ -37,7 +44,7 @@ from .structure import (
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
 
-def flashcard_list(book_id: int) -> list[Flashcard]:
+async def flashcard_list(book_id: int) -> list[Flashcard]:
     """
     Flashcards are composed of words and sentences
     """
@@ -49,12 +56,12 @@ def flashcard_list(book_id: int) -> list[Flashcard]:
             TYPE_WORD,
             word.id,
         )
-        for word in Word.get_by_book(book_id)
+        async for word in Word.get_by_book(book_id)
     ] + [
         Flashcard(
             sentence.order, sentence.text, sentence.translations, TYPE_SENTENCE, None
         )
-        for sentence in Sentence.get_by_book(book_id)
+        async for sentence in Sentence.get_by_book(book_id)
     ]
 
     flashcards.sort(key=lambda f: f.order)
@@ -62,11 +69,11 @@ def flashcard_list(book_id: int) -> list[Flashcard]:
     return flashcards
 
 
-def get_context_for_word(word_id: int) -> Generator:
+async def get_context_for_word(word_id: int) -> Generator:
     """
     Get all sentences from book that match to this word.
     """
-    for context in Context.get_by_word(word_id):
+    async for context in Context.get_by_word(word_id):
         yield context
 
 
@@ -134,11 +141,11 @@ def prepare_book_sentences(stemmer, book: Book) -> list[BookContent]:
     return book_contents
 
 
-def get_book_content(book: Book) -> str:
+def get_book_content(book_path: Path) -> str:
     """
     Get whole book content
     """
-    with open(book.path) as f:
+    with open(book_path) as f:
         book_content = f.read()
     return book_content
 
@@ -248,12 +255,17 @@ def lemmatize(lemmatizer, source: str) -> str:
     return source
 
 
-def load_translations(filename_path):
+def load_translations(book_id, filename_path):
     """
     Load csv translation file to db
     """
-    book = find_book(filename_path.parts[-1])
-    max_order = max_order_for_book_id(book.id) + 1
+    asyncio.run(load_translations_asyncio(book_id, filename_path))
+
+
+async def load_translations_asyncio(book_id, filename_path):
+    book = Book(id=book_id)
+    await book.match_first()
+    max_order = await max_order_for_book_id(book.id) + 1
     order = itertools.count(start=max_order)
     lemmatizer = nltk.WordNetLemmatizer()
 
@@ -264,43 +276,44 @@ def load_translations(filename_path):
             col1 = lemmatize(lemmatizer, col1)
             if len(col1.strip().split()) == 1:
                 word = Word(key_word=col1)
-                word.match_first()
+                await word.match_first()
                 if word.id:
                     if col2 not in word.translations:
                         word.translations.append(col2)
-                        word.save()
+                        await word.save()
                     book_word = BookWord(
                         book_id=book.id,
                         word_id=word.id,
                     )
-                    book_word.match_first()
+                    await book_word.match_first()
                     if not book_word.id:
                         book_word.order = next(order)
-                        book_word.save()
+                        await book_word.save()
                 else:
                     word.translations = [col2]
+                    await word.save()
                     book_word = BookWord(
                         book_id=book.id,
-                        word_id=word.save(),
+                        word_id=word.id,
                     )
-                    book_word.match_first()
+                    await book_word.match_first()
                     if not book_word.id:
                         book_word.order = next(order)
-                        book_word.save()
+                        await book_word.save()
 
             else:
                 sentence = Sentence(
                     book_id=book.id,
                     text=col1,
                 )
-                sentence.match_first()
+                await sentence.match_first()
                 if not sentence.id:
                     sentence.order = next(order)
                     sentence.translations = [col2]
-                    sentence.save()
+                    await sentence.save()
                 elif col2 not in sentence.translations:
                     sentence.translations.append(col2)
-                    sentence.save()
+                    await sentence.save()
 
 
 def show_end_up_result(total, correct):
@@ -310,22 +323,23 @@ def show_end_up_result(total, correct):
     print(f"\n========== Correct words: {correct}/{total} ==========\n")
 
 
-def print_all_books():
+async def print_all_books():
     """
     Print id, title and author for all books.
     """
-    for book in Book.all():
+    async for book in Book.all():
         print(f"{book.id}. {book.title} - {book.author}")
 
 
-def learn(book_id: int, start_line: int) -> tuple[int, int]:
+async def learn(book_id: int, start_line: int) -> tuple[int, int]:
     """
     Print flashcard and read input from user. Compare them and show results.
     """
     correct = 0
     total = 0
 
-    for flashcard in flashcard_list(book_id)[start_line:]:
+    f_list = await flashcard_list(book_id)
+    for flashcard in f_list[start_line:]:
         try:
             your_response = input(f"{flashcard.text} - ").strip()
         except KeyboardInterrupt:
@@ -341,15 +355,14 @@ def learn(book_id: int, start_line: int) -> tuple[int, int]:
             translations = "; ".join(flashcard.translations)
             print(" " * spaces_nr + translations)
             if flashcard.type == TYPE_WORD:
-                for nr, context in enumerate(
-                    get_context_for_word(flashcard.word_id), start=1
-                ):
-                    print(f"{context.book_id}, {nr}: {context.content}")
+                nr = itertools.count(1)
+                async for context in get_context_for_word(flashcard.word_id):
+                    print(f"{context.book_id}, {next(nr)}: {context.content}")
 
     return total, correct
 
 
-def translate(word: Word, log_output) -> list[tuple[str, str]]:
+def translate(word: str, log_output) -> list[tuple[str, str]]:
     """
     Translate word using dictionary API
     """
@@ -357,7 +370,7 @@ def translate(word: Word, log_output) -> list[tuple[str, str]]:
         "X-Secret": PONS_SECRET_KEY,
     }
     lang = "enpl"
-    url = f"{API_URL}?l={lang}&q={word.key_word}"
+    url = f"{API_URL}?l={lang}&q={word}"
     response = requests.get(
         url=url,
         headers=headers,
@@ -439,3 +452,199 @@ def save_translations(word: Word, translations: list):
 
     if is_changed:
         word.save()
+
+
+async def add_sentence_book_content(book_id, sentence_nr, sentence, book_contents) -> None:
+    if not sentence:
+        return
+
+    if sentence.lower().startswith('chapter '):
+        book_content = BookContent(
+            nr=next(sentence_nr),
+            book_id=book_id,
+            sentence=sentence.split("\n")[0],
+        )
+        await book_content.save()
+        sentence = "\n".join(sentence.split("\n")[1:])[:255]
+
+    book_content = BookContent(
+        nr=next(sentence_nr),
+        book_id=book_id,
+        sentence=sentence[:255],
+    )
+    await book_content.save()
+    await book_contents.put(book_content)
+
+
+async def split_to_words(book_content, stemmer, bwords, relations) -> None:
+    bword_ids = set()
+    for word in nltk.word_tokenize(book_content.sentence):
+        if not word.isalpha():
+            continue
+
+        word = word.lower()
+        stem = stemmer.stem(word)
+        if len(stem) < MIN_STEM_WORD:
+            continue
+
+        if stem in bwords:
+            bword = bwords[stem]
+            bword.count += 1
+            bword.update_later = True
+        else:
+            bword = await Bword(stem=stem).find_stem()
+            if bword:
+                bword.update_later = True
+            else:
+                bword = Bword(
+                    stem=stem,
+                    declination=[word],
+                    count=1,
+                )
+                bword.update_later = False
+                await bword.save()
+            bwords[stem] = bword
+
+        if word not in bword.declination:
+            bword.declination.append(word)
+
+        if bword.count < MAX_STEM_OCCURRENCE and bword.id not in bword_ids:
+            bword_ids.add(bword.id)
+
+    for bword_id in bword_ids:
+        await relations.put((book_content.id, bword_id))
+
+
+async def join_word_to_sentence(book_content_id, bword_id) -> None:
+    bbc = BwordBookContent(
+        book_content_id=book_content_id,
+        bword_id=bword_id,
+    )
+    await bbc.save()
+
+
+async def save_bwords_to_db(bwords, status) -> None:
+    while True:
+        if status['r']:
+            for stem, bword in bwords.items():
+                if bword.update_later:
+                    await bword.save()
+            return
+        else:
+            await asyncio.sleep(0.1)
+
+
+async def put_sentences(book_raw, sentences: asyncio.Queue, status):
+    for sentence in nltk.sent_tokenize(book_raw):
+        await sentences.put(sentence)
+    status['s'] = True
+
+
+async def task_add_sentence_book_content(book_id, sentence_nr, sentences: asyncio.Queue, book_contents, status):
+    while True:
+        try:
+            sentence = sentences.get_nowait()
+            await add_sentence_book_content(book_id, sentence_nr, sentence, book_contents)
+            sentences.task_done()
+        except asyncio.QueueEmpty:
+            # await sentences.join()
+            if status['s']:
+                await sentences.join()
+                status['w'] = True
+                return
+            await asyncio.sleep(0.1)
+
+
+async def task_split_to_words(book_contents, stemmer, bwords, relations, status):
+    while True:
+        try:
+            book_content = book_contents.get_nowait()
+            await split_to_words(book_content, stemmer, bwords, relations)
+            book_contents.task_done()
+        except asyncio.QueueEmpty:
+            # await book_contents.join()
+            if status['w']:
+                await book_contents.join()
+                status['r'] = True
+                return
+            await asyncio.sleep(0.1)
+
+
+async def task_join_word_to_sentence(relations, status):
+    while True:
+        try:
+            book_content_id, bword_id = relations.get_nowait()
+            await join_word_to_sentence(book_content_id, bword_id)
+            relations.task_done()
+        except asyncio.QueueEmpty:
+            # await relations.join()
+            if status['r']:
+                await relations.join()
+                return
+            await asyncio.sleep(0.1)
+
+
+async def process_sentences(sentences, tasks, book_id, sentence_nr, book_contents, status):
+    task = asyncio.create_task(
+        task_add_sentence_book_content(book_id, sentence_nr, sentences, book_contents, status),
+        name=f"Task add_sentence {book_id}",
+    )
+    tasks.append(task)
+
+
+async def process_words(book_contents, stemmer, bwords, relations, tasks, status):
+    task = asyncio.create_task(
+        task_split_to_words(book_contents, stemmer, bwords, relations, status),
+        name=f"Task split to words",
+    )
+    tasks.append(task)
+
+
+async def process_word_sentence_relation(relations, tasks, status):
+    task = asyncio.create_task(
+        task_join_word_to_sentence(relations, status),
+        name=f"join word to sentnece"
+    )
+    tasks.append(task)
+
+
+async def tokenize_book_content(book_id, book_raw) -> None:
+    sentences = asyncio.Queue(1000)
+    book_contents = asyncio.Queue(1500)
+    bwords: dict[str, Bword] = {}
+    relations = asyncio.Queue(2000)
+    stemmer = nltk.PorterStemmer()
+    sentence_nr = itertools.count()
+
+    tasks = []
+    status = {'s': False, 'w': False, 'r': False, 'x': False}
+    await asyncio.gather(
+        put_sentences(book_raw, sentences, status),
+        process_sentences(sentences, tasks, book_id, sentence_nr, book_contents, status),
+        process_words(book_contents, stemmer, bwords, relations, tasks, status),
+        process_word_sentence_relation(relations, tasks, status),
+    )
+
+    await save_bwords_to_db(bwords, status)
+
+    for task in tasks:
+        task.cancel()
+
+
+async def load_book_content(book_path_str: str, book_id: int) -> None:
+    """
+    Load book from path, and add book.
+    """
+    book = Book(id=book_id)
+    await book.match_first()
+    if book.title is None:
+        raise ValueError(f"ERROR: Not found book for id = {book_id}.")
+
+    book_raw = get_book_content(Path(book_path_str))
+
+    await tokenize_book_content(book_id, book_raw)
+
+    book.sentences_count = await BookContent.count_sentences_for_book(book.id)
+    await book.save()
+
+    print(f"Loaded whole book '{book.title}': {book.sentences_count} sentences.")

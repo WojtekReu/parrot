@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 import configparser
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 
 #
 # Alembic configuration
@@ -20,7 +20,7 @@ sqlalchemy_url = config["alembic"]["sqlalchemy.url"]
 # Parrot project configuration
 #
 
-engine = create_engine(sqlalchemy_url, echo=False)
+engine = create_async_engine(sqlalchemy_url, echo=False)
 
 # File book_list.csv contains 4 columns: translations.csv;title;author;path_to_book.
 BOOKS_PATH = PROJECT_PATH.joinpath("data", "book_list.csv")

@@ -11,6 +11,9 @@ DEFAULT_LINE_NR = 0
 SENTENCES_LIMIT = 10
 DETERMINERS = "the", "a", "an"
 
+MIN_STEM_WORD = 3
+MAX_STEM_OCCURRENCE = 100
+
 with open(ADVERBS_FILE) as f:
     ADVERBS = (adverbs for adverbs in f.read().split())
 
@@ -28,13 +31,6 @@ class Flashcard:
     translations: list[str]
     type: str
     word_id: Optional[int]
-
-
-@dataclass
-class BookContent:
-    sentence: str
-    words: tuple
-    stems: tuple
 
 
 def tag_to_pos(tag):
