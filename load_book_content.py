@@ -3,7 +3,7 @@ import asyncio
 
 import typer
 
-from wing.processing import load_book_content, print_all_books
+from wing.processing import load_book_content_cmd, print_all_books
 
 
 def main(book_path: str):
@@ -14,7 +14,8 @@ def main(book_path: str):
     loop.run_until_complete(print_all_books())
     book_id_input = input(f"Choose book number: ").strip()
     book_id = int(book_id_input)
-    loop.run_until_complete(load_book_content(book_path, book_id))
+    book = loop.run_until_complete(load_book_content_cmd(book_path, book_id))
+    print(f"Loaded whole book '{book.title}': {book.sentences_count} sentences.")
 
 
 if __name__ == "__main__":

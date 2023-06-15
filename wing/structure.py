@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Any
 from wing.alchemy import ADVERBS_FILE, PREPOSITIONS_FILE, PRONOUNS_FILE
 
 TYPE_WORD = 'W'
@@ -11,7 +11,7 @@ DEFAULT_LINE_NR = 0
 SENTENCES_LIMIT = 10
 DETERMINERS = "the", "a", "an"
 
-MIN_STEM_WORD = 3
+MIN_LEM_WORD = 3
 MAX_STEM_OCCURRENCE = 100
 
 with open(ADVERBS_FILE) as f:
@@ -28,9 +28,9 @@ with open(PREPOSITIONS_FILE) as f:
 class Flashcard:
     order: int
     text: str
-    translations: list[str]
+    translation: str
     type: str
-    word_id: Optional[int]
+    translation_obj: Optional[Any]
 
 
 def tag_to_pos(tag):

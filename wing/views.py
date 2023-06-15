@@ -16,14 +16,6 @@ async def word_context(word: Word) -> str:
     return ''.join(output.values())
 
 
-def find_word_in_context(word_str: str) -> tuple[Word, list[str]]:
-    """
-    find word in context
-    """
-    word = Word(key_word=word_str)
-    word.match_first()
-
-
 async def word_sentences(word: Word) -> str:
     """
     View book title in first row and the next rows have sentences with translation.

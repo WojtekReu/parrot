@@ -5,7 +5,8 @@ Run script to learn english words.
 import asyncio
 import typer
 
-from wing.processing import learn, print_all_books, show_end_up_result
+from wing.messages import show_end_up_result
+from wing.processing import learn, print_all_books
 from wing.structure import DEFAULT_BOOK_NR, DEFAULT_LINE_NR
 
 

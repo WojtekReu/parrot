@@ -1,4 +1,4 @@
-from typing import List, Generator, Optional, Self
+from typing import AsyncIterable, Generator, List, Optional, Self
 from sqlalchemy import ForeignKey, JSON, select, String, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql.expression import func
@@ -14,6 +14,14 @@ class Base(DeclarativeBase):
     """
     id: Mapped[int] = mapped_column(primary_key=True)
 
+    @property
+    def _column_names(self) -> Generator:
+        """
+        Generate column names for model
+        """
+        for column in self.metadata.tables[self.__tablename__].columns:
+            yield column.name
+
     def _set(self):
         """
         Set attributes from object to model
@@ -22,20 +30,18 @@ class Base(DeclarativeBase):
         self.table = self.__mapper__.local_table
 
         self.fns_where = []
-        self.column_names = []
         for column in self.metadata.tables[table_name].columns:
-            self.column_names.append(column.description)
             value = getattr(self, column.description)
             if value:
                 fn_where = lambda x, y: x == y
                 self.fns_where.append(fn_where(column, value))
 
     @classmethod
-    async def all(cls) -> Generator:
+    async def all(cls) -> AsyncIterable:
         """
         Get all objects
         """
-        stmt = select(cls)
+        stmt = select(cls).order_by(cls.id)
         async with Session(engine) as s:
             for instance_tuple in (await s.execute(stmt)).all():
                 yield instance_tuple[0]
@@ -48,9 +54,9 @@ class Base(DeclarativeBase):
         stmt = select(self.table).where(*self.fns_where)
 
         async with Session(engine) as s:
-            result = (await s.execute(stmt)).first()
-            if result:
-                for column_name, value in zip(self.column_names, result):
+            row = (await s.execute(stmt)).first()
+            if row:
+                for column_name, value in zip(self._column_names, row):
                     setattr(self, column_name, value)
 
     async def save(self):
@@ -103,14 +109,27 @@ class Book(Base):
     title: Mapped[str] = mapped_column(String(50))
     author: Mapped[str] = mapped_column(String(50))
     sentences_count: Mapped[int | None] = mapped_column(default=None)
-    path: Mapped[str | None] = mapped_column(String(100), default=None)
     sentences: Mapped[List["Sentence"]] = relationship(back_populates="book")
     bookwords: Mapped[List["BookWord"]] = relationship(back_populates="book")
     contexts: Mapped[List["Context"]] = relationship(back_populates="book")
     book_contents: Mapped[List["BookContent"]] = relationship(back_populates="book")
+    book_translations: Mapped[List["BookTranslation"]] = relationship(back_populates="books")
 
     def __repr__(self):
         return f"<Book {self.id}: {self.title} - {self.author}>"
+
+
+class BookTranslation(Base):
+    """
+    Relation translation to book with order occurrence
+    """
+    __tablename__ = "book_translation"
+
+    order: Mapped[int]
+    book_id: Mapped[int] = mapped_column(ForeignKey("book.id"))
+    translation_id: Mapped[int] = mapped_column(ForeignKey("translation.id"))
+    books: Mapped[List["Book"]] = relationship(back_populates="book_translations")
+    translations: Mapped[List["Translation"]] = relationship(back_populates="book_translations")
 
 
 class BookContent(Base):
@@ -121,7 +140,7 @@ class BookContent(Base):
 
     nr: Mapped[int]
     book_id: Mapped[int] = mapped_column(ForeignKey("book.id"))
-    sentence: Mapped[str] = mapped_column(String(255))
+    sentence: Mapped[str] = mapped_column(String(1000))
     book: Mapped["Book"] = relationship(back_populates="book_contents")
     bword_book_contents: Mapped[List["BwordBookContent"]] = relationship(
         back_populates="book_contents",
@@ -140,13 +159,14 @@ class Bword(Base):
     """
     __tablename__ = "bword"
 
-    stem: Mapped[str] = mapped_column(String(255))
+    lem: Mapped[str] = mapped_column(String(255), default=None, nullable=True)
     declination: Mapped[list] = mapped_column(JSON)
     bword_book_contents: Mapped[List["BwordBookContent"]] = relationship(back_populates="bwords")
-    count: Mapped[int | None] = mapped_column(default=None)
+    translations: Mapped[List["Translation"]] = relationship(back_populates="bwords")
+    count: Mapped[int | None] = mapped_column(default=0)
 
-    async def save_for_stem(self):
-        bword = self.find_stem()
+    async def save_for_lem(self):
+        bword = self.find_lem()
         if bword:
             bword.declination = list(set(bword.declination + self.declination))
             if bword.count is None:
@@ -157,8 +177,8 @@ class Bword(Base):
         else:
             await self.save()
 
-    async def find_stem(self) -> Optional[Self]:
-        stmt = select(self.__class__).where(self.__class__.stem == self.stem)
+    async def find_lem(self) -> Optional[Self]:
+        stmt = select(self.__class__).where(self.__class__.lem == self.lem)
         async with Session(engine) as s:
             row = (await s.execute(stmt)).first()
             if row:
@@ -183,18 +203,18 @@ class Sentence(Base):
     """
     __tablename__ = "sentence"
 
-    text: Mapped[str]
+    text: Mapped[str] = mapped_column(String(1000))
     book_id = mapped_column(ForeignKey("book.id"))
     order: Mapped[int]
     book: Mapped["Book"] = relationship(back_populates="sentences")
-    translations: Mapped[list] = mapped_column(JSON)
+    translation: Mapped[str] = mapped_column(String(1000), default=None, nullable=True)
     wordsentences: Mapped[List["WordSentence"]] = relationship(back_populates="sentence")
 
     def __repr__(self) -> str:
         return f"<Sentence {self.id}: {self.text[:20]}>"
 
     @classmethod
-    async def get_by_book(cls, book_id: int) -> Generator:
+    async def get_by_book(cls, book_id: int) -> AsyncIterable:
         """
         Get sentences ordered by occurrence in text.
         """
@@ -305,7 +325,7 @@ class Context(Base):
         return f"<Context {self.id}: {self.content[:20]}>"
 
     @classmethod
-    async def get_by_word(cls, word_id: int) -> Generator:
+    async def get_by_word(cls, word_id: int) -> AsyncIterable:
         stmt = (
             select(cls)
             .where(cls.word_id == word_id)
@@ -313,6 +333,55 @@ class Context(Base):
         async with Session(engine) as s:
             for context_tuple in (await s.execute(stmt)).all():
                 yield context_tuple[0]
+
+
+class Translation(Base):
+    """
+    Words to learn, each word may have many translations.
+    """
+    __tablename__ = "translation"
+
+    bword_id: Mapped[int] = mapped_column(ForeignKey("bword.id"))
+    source: Mapped[str] = mapped_column(String(100))
+    text: Mapped[str] = mapped_column(String(100))
+    sentences: Mapped[list] = mapped_column(JSON, default=None, nullable=True)
+    book_contents: Mapped[list] = mapped_column(JSON, default=None, nullable=True)
+    bwords: Mapped["Bword"] = relationship(back_populates="translations")
+    book_translations: Mapped[List["BookTranslation"]] = relationship(
+        back_populates="translations",
+    )
+
+    @classmethod
+    async def get_by_book(cls, book_id: int) -> AsyncIterable:
+        """
+        Get all translations by book_id, relation is in BookTranslation
+        """
+        stmt = (
+            select(cls)
+            .join(BookTranslation)
+            .add_columns(BookTranslation.order)
+            .where(BookTranslation.book_id == book_id)
+            .order_by(BookTranslation.order)
+        )
+        async with Session(engine) as s:
+            for row in (await s.execute(stmt)).all():
+                word = row[0]
+                word.order = row[1]
+                yield word
+
+    async def get_book_contents(self):
+        """
+        Get all contents for this bword_id, relation is in BwordBookContent
+        """
+        stmt = (
+            select(BookContent)
+            .join(BwordBookContent)
+            .where(BwordBookContent.bword_id == self.bword_id)
+            .order_by(BookContent.nr)
+        )
+        async with Session(engine) as s:
+            for row in (await s.execute(stmt)).all():
+                yield row[0]
 
 
 class ParrotSettings(Base):
