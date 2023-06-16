@@ -12,6 +12,7 @@ class Base(DeclarativeBase):
     """
     Abstract class for Model
     """
+
     id: Mapped[int] = mapped_column(primary_key=True)
 
     @property
@@ -104,6 +105,7 @@ class Book(Base):
     """
     Books to read
     """
+
     __tablename__ = "book"
 
     title: Mapped[str] = mapped_column(String(50))
@@ -113,7 +115,9 @@ class Book(Base):
     bookwords: Mapped[List["BookWord"]] = relationship(back_populates="book")
     contexts: Mapped[List["Context"]] = relationship(back_populates="book")
     book_contents: Mapped[List["BookContent"]] = relationship(back_populates="book")
-    book_translations: Mapped[List["BookTranslation"]] = relationship(back_populates="books")
+    book_translations: Mapped[List["BookTranslation"]] = relationship(
+        back_populates="books"
+    )
 
     def __repr__(self):
         return f"<Book {self.id}: {self.title} - {self.author}>"
@@ -123,19 +127,23 @@ class BookTranslation(Base):
     """
     Relation translation to book with order occurrence
     """
+
     __tablename__ = "book_translation"
 
     order: Mapped[int]
     book_id: Mapped[int] = mapped_column(ForeignKey("book.id"))
     translation_id: Mapped[int] = mapped_column(ForeignKey("translation.id"))
     books: Mapped[List["Book"]] = relationship(back_populates="book_translations")
-    translations: Mapped[List["Translation"]] = relationship(back_populates="book_translations")
+    translations: Mapped[List["Translation"]] = relationship(
+        back_populates="book_translations"
+    )
 
 
 class BookContent(Base):
     """
     Books content separated to sentences
     """
+
     __tablename__ = "book_content"
 
     nr: Mapped[int]
@@ -147,7 +155,10 @@ class BookContent(Base):
     )
 
     @classmethod
-    async def count_sentences_for_book(cls, book_id):
+    async def count_sentences_for_book(cls, book_id) -> int:
+        """
+        Count all sentences for book_id
+        """
         stmt = select(func.count()).where(cls.book_id == book_id)
         async with Session(engine) as s:
             return (await s.execute(stmt)).first()[0]
@@ -157,15 +168,21 @@ class Bword(Base):
     """
     All wards in books.
     """
+
     __tablename__ = "bword"
 
     lem: Mapped[str] = mapped_column(String(255), default=None, nullable=True)
     declination: Mapped[list] = mapped_column(JSON)
-    bword_book_contents: Mapped[List["BwordBookContent"]] = relationship(back_populates="bwords")
+    bword_book_contents: Mapped[List["BwordBookContent"]] = relationship(
+        back_populates="bwords"
+    )
     translations: Mapped[List["Translation"]] = relationship(back_populates="bwords")
     count: Mapped[int | None] = mapped_column(default=0)
 
     async def save_for_lem(self):
+        """
+        Match this object to other with the same lem
+        """
         bword = self.find_lem()
         if bword:
             bword.declination = list(set(bword.declination + self.declination))
@@ -178,29 +195,61 @@ class Bword(Base):
             await self.save()
 
     async def find_lem(self) -> Optional[Self]:
+        """
+        Find bword using only lem attribute. Don't care about other attributes.
+        """
         stmt = select(self.__class__).where(self.__class__.lem == self.lem)
         async with Session(engine) as s:
             row = (await s.execute(stmt)).first()
             if row:
                 return row[0]
 
+    async def get_translations(self) -> AsyncIterable:
+        """
+        Get translation for this bword
+        """
+        stmt = select(Translation).where(Translation.bword_id == self.id)
+        async with Session(engine) as s:
+            for row in (await s.execute(stmt)).all():
+                yield row[0]
+
+    async def get_book_contents(self) -> AsyncIterable:
+        """
+        Get all book_content for this bword_id, relation is in BwordBookContent
+        """
+        if self.id is None:
+            raise ValueError("Can't select book_contents because bword.id is None.")
+        stmt = (
+            select(BookContent)
+            .join(BwordBookContent)
+            .where(BwordBookContent.bword_id == self.id)
+            .order_by(BookContent.book_id, BookContent.nr)
+        )
+        async with Session(engine) as s:
+            for row in (await s.execute(stmt)).all():
+                yield row[0]
+
 
 class BwordBookContent(Base):
     """
     Relations words and sentences
     """
+
     __tablename__ = "bword_book_content"
 
     bword_id: Mapped[int] = mapped_column(ForeignKey("bword.id"))
     book_content_id: Mapped[int] = mapped_column(ForeignKey("book_content.id"))
     bwords: Mapped[List["Bword"]] = relationship(back_populates="bword_book_contents")
-    book_contents: Mapped[List["BookContent"]] = relationship(back_populates="bword_book_contents")
+    book_contents: Mapped[List["BookContent"]] = relationship(
+        back_populates="bword_book_contents"
+    )
 
 
 class Sentence(Base):
     """
     Sentences to learn.
     """
+
     __tablename__ = "sentence"
 
     text: Mapped[str] = mapped_column(String(1000))
@@ -208,7 +257,9 @@ class Sentence(Base):
     order: Mapped[int]
     book: Mapped["Book"] = relationship(back_populates="sentences")
     translation: Mapped[str] = mapped_column(String(1000), default=None, nullable=True)
-    wordsentences: Mapped[List["WordSentence"]] = relationship(back_populates="sentence")
+    wordsentences: Mapped[List["WordSentence"]] = relationship(
+        back_populates="sentence"
+    )
 
     def __repr__(self) -> str:
         return f"<Sentence {self.id}: {self.text[:20]}>"
@@ -223,31 +274,12 @@ class Sentence(Base):
             for sentence_tuple in (await s.execute(stmt)).all():
                 yield sentence_tuple[0]
 
-    @classmethod
-    async def get_by_word(cls, word_id: int) -> Generator:
-        """
-        Get sentences ordered by book_id next by occurrence in text.
-        """
-        stmt = (
-            select(cls)
-            .where(
-                cls.id == WordSentence.sentence_id,
-                WordSentence.word_id == word_id,
-            )
-            .order_by(
-                cls.book_id,
-                cls.order,
-            )
-        )
-        async with Session(engine) as s:
-            for sentence_tuple in (await s.execute(stmt)).all():
-                yield sentence_tuple[0]
-
 
 class BookWord(Base):
     """
     Book and Work relation with order by occurrence in book.
     """
+
     __tablename__ = "book_word"
 
     book_id: Mapped[int] = mapped_column(ForeignKey("book.id"))
@@ -261,6 +293,7 @@ class Word(Base):
     """
     Words to learn
     """
+
     __tablename__ = "word"
 
     key_word: Mapped[str] = mapped_column(String(40))
@@ -287,20 +320,12 @@ class Word(Base):
                 word.order = word_tuple[1]
                 yield word
 
-    @classmethod
-    def get_by_key_word(cls, key_word) -> Optional[tuple]:
-        stmt = (
-            select(cls)
-            .where(cls.key_word == key_word)
-        )
-        with Session(engine) as s:
-            return s.execute(stmt).first()
-
 
 class WordSentence(Base):
     """
     Word Sentence relation
     """
+
     __tablename__ = "word_sentence"
 
     word_id: Mapped[int] = mapped_column(ForeignKey("word.id"))
@@ -313,6 +338,7 @@ class Context(Base):
     """
     Sentences with key_word obtained by parsing book.
     """
+
     __tablename__ = "context"
 
     content: Mapped[str] = mapped_column(String(255))
@@ -326,10 +352,7 @@ class Context(Base):
 
     @classmethod
     async def get_by_word(cls, word_id: int) -> AsyncIterable:
-        stmt = (
-            select(cls)
-            .where(cls.word_id == word_id)
-        )
+        stmt = select(cls).where(cls.word_id == word_id)
         async with Session(engine) as s:
             for context_tuple in (await s.execute(stmt)).all():
                 yield context_tuple[0]
@@ -339,6 +362,7 @@ class Translation(Base):
     """
     Words to learn, each word may have many translations.
     """
+
     __tablename__ = "translation"
 
     bword_id: Mapped[int] = mapped_column(ForeignKey("bword.id"))
@@ -369,25 +393,32 @@ class Translation(Base):
                 word.order = row[1]
                 yield word
 
-    async def get_book_contents(self):
+    async def get_book_contents(self) -> AsyncIterable[BookContent]:
         """
-        Get all contents for this bword_id, relation is in BwordBookContent
+        Iterate by id in book_contents and yield BookContent
         """
-        stmt = (
-            select(BookContent)
-            .join(BwordBookContent)
-            .where(BwordBookContent.bword_id == self.bword_id)
-            .order_by(BookContent.nr)
-        )
-        async with Session(engine) as s:
-            for row in (await s.execute(stmt)).all():
-                yield row[0]
+        if self.book_contents:
+            for book_content_id in self.book_contents:
+                book_content = BookContent(id=book_content_id)
+                await book_content.match_first()
+                yield book_content
+
+    async def get_sentences(self) -> AsyncIterable[Sentence]:
+        """
+        Iterate by id in sentences and yield Sentence for assigned translation
+        """
+        if self.sentences:
+            for sentence_id in self.sentences:
+                sentence = Sentence(id=sentence_id)
+                await sentence.match_first()
+                yield sentence
 
 
 class ParrotSettings(Base):
     """
     Dynamic global settings for parrot project.
     """
+
     __tablename__ = "parrot_settings"
     last_word_id: Mapped[int] = mapped_column(default=0, nullable=False)
 

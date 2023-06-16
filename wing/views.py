@@ -1,30 +1,45 @@
 import itertools
-from collections import OrderedDict
+from typing import Any
 
-from .models import Sentence, Word
-from .processing import get_context_for_word
-
-
-async def word_context(word: Word) -> str:
-    output = OrderedDict()
-    if word.id:
-        nr = itertools.count(1)
-        async for context in get_context_for_word(word.id):
-            if context.book_id not in output:
-                output[context.book_id] = f"        TITLE: --> {context.book.title} <--\n"
-            output[context.book_id] += f"[{next(nr)}] {context.content}\n"
-    return ''.join(output.values())
+from .models import Book, Bword, Translation
 
 
-async def word_sentences(word: Word) -> str:
+async def print_all_books() -> None:
     """
-    View book title in first row and the next rows have sentences with translation.
+    Print id, title and author for all books.
     """
-    output = OrderedDict()
-    if word.id:
-        async for sentence in Sentence.get_by_word(word_id=word.id):
-            if sentence.book_id not in output:
-                output[sentence.book_id] = f"{sentence.book.title} ({sentence.book_id})\n"
-            translations = '; '.join(sentence.translations)
-            output[sentence.book_id] += f"    {sentence.text} -> {translations}\n"
-    return ''.join(output.values())
+    async for book in Book.all():
+        print(f"{book.id}. {book.title} - {book.author}")
+
+
+def show_correct_translation(flashcard: Any) -> None:
+    spaces_nr = len(flashcard.text) + 3
+    print(" " * spaces_nr + flashcard.translation)
+
+
+async def show_matched_for_translation(translation: Translation) -> bool:
+    """
+    Show results assigned book contents and sentences for translation
+    """
+    print(f"EN: {translation.source},\t PL: {translation.text}")
+    print_result = False
+    nr = itertools.count(1)
+    print("-------------------- Book Contents ---------------------")
+    async for bc in translation.get_book_contents():
+        print_result = True
+        print(f"{bc.book_id}, {next(nr)}: {bc.sentence}")
+    print("---------------------- Sentences -----------------------")
+
+    async for sentence in translation.get_sentences():
+        print_result = True
+        print(f"{sentence.book_id}, {next(nr)}: {sentence.text}")
+        print(f"\t\t {sentence.translation}")
+    return print_result
+
+
+async def show_not_matched_for_translation(bword: Bword) -> None:
+    print("----------- Automatically found sentences ----------")
+    nr = itertools.count(1)
+    async for bc in bword.get_book_contents():
+        # book_id, nr, book_content.sentence
+        print(f"{bc.book_id}, {next(nr)}: {bc.sentence}")

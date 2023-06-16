@@ -3,29 +3,31 @@
 import asyncio
 import typer
 
-from wing.models import Word
-from wing.views import word_context, word_sentences
+from wing.processing import find_word
+from wing.views import show_matched_for_translation, show_not_matched_for_translation
 
 
 async def async_main(key_word: str):
     """
     Show word translation, sentence containing word and book context
     """
-    word = Word(key_word=key_word)
-    await word.match_first()
-    translations = '; '.join(word.translations) if word.translations else '----'
-    print(f"Word source: `{word.key_word}` -> {translations}")
+    bword = await find_word(key_word)
+    print(f"lem: {bword.lem}")
+    if bword.declination:
+        print(f"declinations: {', '.join(bword.declination)}")
 
-    print(await word_sentences(word))
-    output_word_context = await word_context(word)
-    if output_word_context:
-        print("---------------- context in books ----------------")
-        print(output_word_context)
+    print_result = False
+
+    async for translation in bword.get_translations():
+        print_result = await show_matched_for_translation(translation)
+
+    if not print_result and bword.id:
+        await show_not_matched_for_translation(bword)
 
 
 def main(key_word: str):
     """
-    Run asynchronously
+    Show the occurrence a word in books.
     """
     asyncio.run(async_main(key_word))
 

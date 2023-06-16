@@ -3,7 +3,8 @@ import asyncio
 
 import typer
 
-from wing.processing import load_book_content_cmd, print_all_books
+from wing.processing import load_book_content_cmd
+from wing.views import print_all_books
 
 
 def main(book_path: str):

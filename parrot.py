@@ -6,8 +6,9 @@ import asyncio
 import typer
 
 from wing.messages import show_end_up_result
-from wing.processing import learn, print_all_books
+from wing.processing import learn
 from wing.structure import DEFAULT_BOOK_NR, DEFAULT_LINE_NR
+from wing.views import print_all_books
 
 
 def main():

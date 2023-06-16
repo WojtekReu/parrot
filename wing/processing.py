@@ -4,7 +4,7 @@ import itertools
 import json
 import re
 from pathlib import Path
-from typing import Callable, Coroutine, Generator, Optional, AsyncIterable
+from typing import Optional, AsyncIterable
 
 import nltk
 import requests
@@ -13,15 +13,17 @@ from urllib3.exceptions import InsecureRequestWarning
 from .logging import write_logs
 from .models import (
     Book,
+    BookTranslation,
     BookContent,
-    BookWord,
+    Bword,
+    BwordBookContent,
     Context,
+    max_order_for_book_id,
     ParrotSettings,
     Sentence,
     Translation,
     Word,
     WordSentence,
-    max_order_for_book_id, Bword, BwordBookContent, BookTranslation,
 )
 from .alchemy import API_URL, BOOKS_PATH, PONS_SECRET_KEY
 from .structure import (
@@ -38,6 +40,11 @@ from .structure import (
     TYPE_WORD,
 )
 from .messages import book_created_message, book_not_found_message, loading_message
+from .views import (
+    show_matched_for_translation,
+    show_not_matched_for_translation,
+    show_correct_translation,
+)
 
 # Suppress only the single warning from urllib3 needed.
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
@@ -76,36 +83,6 @@ async def get_context_for_word(translation_id: int) -> AsyncIterable:
         yield context
 
 
-async def get_content_for_translation(translation: Translation) -> AsyncIterable[tuple]:
-    """
-    Iterate by book_id and sentence for assigned word.
-    """
-    if translation.book_contents:
-        for book_content_id in translation.book_contents:
-            book_content = BookContent(id=book_content_id)
-            await book_content.match_first()
-            yield book_content.book_id, book_content.sentence
-
-
-async def get_context_for_translation(translation: Translation) -> AsyncIterable[tuple]:
-    """
-    Iterate by book_id and sentence for assigned word.
-    """
-    async for book_content in translation.get_book_contents():
-        yield book_content.book_id, book_content.sentence
-
-
-async def get_sentence_for_translation(translation: Translation) -> AsyncIterable[tuple]:
-    """
-    Iterate by book_id and sentence with translation for assigned word.
-    """
-    if translation.sentences:
-        for sentence_id in translation.sentences:
-            sentence = Sentence(id=sentence_id)
-            await sentence.match_first()
-            yield sentence.book_id, sentence.text, sentence.translation
-
-
 def get_pattern(word: str) -> str:
     """
     Pattern to find sentences with this word in book
@@ -130,6 +107,17 @@ def find_book(filename: str) -> Optional[Book]:
                 return book
 
         raise ValueError(f"Path {filename} not in {BOOKS_PATH}")
+
+
+async def find_word(word_str: str) -> Bword:
+    """
+    Find word in db
+    """
+    lemmatizer = nltk.WordNetLemmatizer()
+    lem = lemmatizer.lemmatize(word_str)
+    bword = Bword(lem=lem)
+    await bword.match_first()
+    return bword
 
 
 def prepare_sentences(lemmatizer) -> list[tuple[int, list[str]]]:
@@ -304,7 +292,7 @@ async def load_translations(book_id: Optional[int], filename_path: Path) -> None
             book_not_found_message(book_id)
             return
     else:
-        title_from_filename = filename_path.name.split('.')[0]
+        title_from_filename = filename_path.name.split(".")[0]
         book = Book(
             title=title_from_filename,
             author="",
@@ -360,14 +348,6 @@ async def load_translations(book_id: Optional[int], filename_path: Path) -> None
                     await sentence.save()
 
 
-async def print_all_books():
-    """
-    Print id, title and author for all books.
-    """
-    async for book in Book.all():
-        print(f"{book.id}. {book.title} - {book.author}")
-
-
 async def learn(book_id: int, start_line: int) -> tuple[int, int]:
     """
     Print flashcard and read input from user. Compare them and show results.
@@ -388,29 +368,16 @@ async def learn(book_id: int, start_line: int) -> tuple[int, int]:
             print("OK")
             correct += 1
         else:
-            spaces_nr = len(flashcard.text) + 3
-            print(" " * spaces_nr + flashcard.translation)
+            show_correct_translation(flashcard)
             if flashcard.type == TYPE_WORD:
-                nr = itertools.count(1)
-                show_extended_content = True
-                print("-------------------- Book Contents ---------------------")
-                async for row in get_content_for_translation(flashcard.translation_obj):
-                    # book_id, nr, book_content.text
-                    show_extended_content = False
-                    print(f"{row[0]}, {next(nr)}: {row[1]}")
-                print("---------------------- Sentences -----------------------")
+                print_result = await show_matched_for_translation(
+                    flashcard.translation_obj
+                )
 
-                async for row2 in get_sentence_for_translation(flashcard.translation_obj):
-                    # book_id, nr, sentence.text, sentence.translation
-                    show_extended_content = False
-                    print(f"{row2[0]}, {next(nr)}: {row2[1]}")
-                    print(f"\t\t {row2[2]}")
+                if not print_result:
+                    bword = Bword(id=flashcard.translation_obj.bword_id)
+                    await show_not_matched_for_translation(bword)
 
-                if show_extended_content:
-                    print("----------- Automatically found sentences ----------")
-                    async for row3 in get_context_for_translation(flashcard.translation_obj):
-                        # book_id, nr, book_content.text
-                        print(f"{row3[0]}, {next(nr)}: {row3[1]}")
     return total, correct
 
 
@@ -491,26 +458,11 @@ def cut_html(source: str) -> str:
     return re.sub(r"<.*?>", "", source)
 
 
-def save_translations(word: Word, translations: list):
-    """
-    Add translation to words translations.
-    """
-    is_changed = False
-    for translation_tuple in translations:
-        source, translation = translation_tuple
-        if source == word.key_word and translation not in word.translations:
-            is_changed = True
-            word.translations.append(translation)
-
-    if is_changed:
-        word.save()
-
-
 async def add_sentence_book_content(book_id, sentence_nr, sentence, book_contents) -> None:
     if not sentence:
         return
 
-    if sentence.lower().startswith('chapter '):
+    if sentence.lower().startswith("chapter "):
         book_content = BookContent(
             nr=next(sentence_nr),
             book_id=book_id,
@@ -582,7 +534,7 @@ async def join_word_to_sentence(book_content_id, bword_id) -> None:
 
 async def save_bwords_to_db(bwords, status) -> None:
     while True:
-        if status['r']:
+        if status["r"]:
             for lem, bword in bwords.items():
                 if bword.update_later:
                     await bword.save()
@@ -594,7 +546,7 @@ async def save_bwords_to_db(bwords, status) -> None:
 async def put_sentences(book_raw, sentences: asyncio.Queue, status):
     for sentence in nltk.sent_tokenize(book_raw):
         await sentences.put(sentence)
-    status['s'] = True
+    status["s"] = True
 
 
 async def task_add_sentence_book_content(book_id, sentence_nr, sentences: asyncio.Queue, book_contents, status):
@@ -605,9 +557,9 @@ async def task_add_sentence_book_content(book_id, sentence_nr, sentences: asynci
             sentences.task_done()
         except asyncio.QueueEmpty:
             # await sentences.join()
-            if status['s']:
+            if status["s"]:
                 await sentences.join()
-                status['w'] = True
+                status["w"] = True
                 return
             await asyncio.sleep(0.1)
 
@@ -620,9 +572,9 @@ async def task_split_to_words(book_contents, lemmatizer, bwords, relations, stat
             book_contents.task_done()
         except asyncio.QueueEmpty:
             # await book_contents.join()
-            if status['w']:
+            if status["w"]:
                 await book_contents.join()
-                status['r'] = True
+                status["r"] = True
                 return
             await asyncio.sleep(0.1)
 
@@ -635,7 +587,7 @@ async def task_join_word_to_sentence(relations, status):
             relations.task_done()
         except asyncio.QueueEmpty:
             # await relations.join()
-            if status['r']:
+            if status["r"]:
                 await relations.join()
                 return
             await asyncio.sleep(0.1)
@@ -674,7 +626,7 @@ async def tokenize_book_content(book_id, book_raw) -> None:
     sentence_nr = itertools.count()
 
     tasks = []
-    status = {'s': False, 'w': False, 'r': False, 'x': False}
+    status = {"s": False, "w": False, "r": False, "x": False}
     await asyncio.gather(
         put_sentences(book_raw, sentences, status),
         process_sentences(sentences, tasks, book_id, sentence_nr, book_contents, status),
