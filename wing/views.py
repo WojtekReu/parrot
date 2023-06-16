@@ -17,29 +17,31 @@ def show_correct_translation(flashcard: Any) -> None:
     print(" " * spaces_nr + flashcard.translation)
 
 
-async def show_matched_for_translation(translation: Translation) -> bool:
+async def show_matched_for_translation(translation: Translation):
     """
     Show results assigned book contents and sentences for translation
     """
     print(f"EN: {translation.source},\t PL: {translation.text}")
-    print_result = False
     nr = itertools.count(1)
     print("-------------------- Book Contents ---------------------")
     async for bc in translation.get_book_contents():
-        print_result = True
         print(f"{bc.book_id}, {next(nr)}: {bc.sentence}")
     print("---------------------- Sentences -----------------------")
 
     async for sentence in translation.get_sentences():
-        print_result = True
         print(f"{sentence.book_id}, {next(nr)}: {sentence.text}")
         print(f"\t\t {sentence.translation}")
-    return print_result
 
 
-async def show_not_matched_for_translation(bword: Bword) -> None:
-    print("----------- Automatically found sentences ----------")
+async def show_not_matched_for_translation(bword: Bword) -> list[tuple[int, Any]]:
+    """
+    Show and return enumerated list of book_contents.
+    """
+    print("---- Automatically found sentences in book content -----")
     nr = itertools.count(1)
+    book_content_list = []
     async for bc in bword.get_book_contents():
-        # book_id, nr, book_content.sentence
-        print(f"{bc.book_id}, {next(nr)}: {bc.sentence}")
+        nr_current = next(nr)
+        book_content_list.append((nr_current, bc))
+        print(f"{bc.book_id}, {nr_current}: {bc.sentence}")
+    return book_content_list

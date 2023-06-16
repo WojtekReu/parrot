@@ -3,6 +3,7 @@
 import asyncio
 import typer
 
+from wing.matching import match_book_contents
 from wing.processing import find_word
 from wing.views import show_matched_for_translation, show_not_matched_for_translation
 
@@ -16,13 +17,23 @@ async def async_main(key_word: str):
     if bword.declination:
         print(f"declinations: {', '.join(bword.declination)}")
 
-    print_result = False
-
+    translations = []
     async for translation in bword.get_translations():
-        print_result = await show_matched_for_translation(translation)
+        translations.append(translation)
+        await show_matched_for_translation(translation)
 
-    if not print_result and bword.id:
-        await show_not_matched_for_translation(bword)
+    book_content_list = []  # this declaration is not necessary
+    print_not_matched = True
+    for translation in translations:
+        if not translation.book_contents:
+            if print_not_matched:
+                book_content_list = await show_not_matched_for_translation(bword)
+                print_not_matched = False
+            list_str = input(
+                f"Match sentences for `{translation.source}` -> `{translation.text}`: "
+            )
+            await match_book_contents(translation, book_content_list, list_str)
+            await show_matched_for_translation(translation)
 
 
 def main(key_word: str):
