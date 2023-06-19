@@ -17,13 +17,10 @@ from .models import (
     BookContent,
     Bword,
     BwordBookContent,
-    Context,
     max_order_for_book_id,
     ParrotSettings,
     Sentence,
     Translation,
-    Word,
-    WordSentence,
 )
 from .alchemy import API_URL, BOOKS_PATH, PONS_SECRET_KEY
 from .structure import (
@@ -75,14 +72,6 @@ async def flashcard_list(book_id: int) -> list[Flashcard]:
     return flashcards
 
 
-async def get_context_for_word(translation_id: int) -> AsyncIterable:
-    """
-    Get all sentences from book that match to this word.
-    """
-    async for context in Context.get_by_word(translation_id):
-        yield context
-
-
 def get_pattern(word: str) -> str:
     """
     Pattern to find sentences with this word in book
@@ -120,12 +109,12 @@ async def find_word(word_str: str) -> Bword:
     return bword
 
 
-def prepare_sentences(lemmatizer) -> list[tuple[int, list[str]]]:
+async def prepare_sentences(lemmatizer) -> list[tuple[int, list[str]]]:
     """
     Get all sentences and prepare lem for all words
     """
     sentences = []
-    for sentence in Sentence.all():
+    async for sentence in Sentence.all():
         sentence_list = [
             lemmatizer.lemmatize(word) for word in nltk.word_tokenize(sentence.text)
         ]
@@ -167,68 +156,22 @@ def get_book_content(book_path: Path) -> str:
     return book_content
 
 
-def connect_words_to_sentences():
+async def connect_words_to_sentences():
     """
     Create relations between words and sentences
     """
     lemmatizer = nltk.WordNetLemmatizer()
-    sentences = prepare_sentences(lemmatizer)
-    print(f"Loaded {len(sentences)} sentences.")
-
-    for word in Word.newer_than(ParrotSettings.get_last_word_id()):
-        word_lem = lemmatizer.lemmatize(word.key_word)
-        for sentence_tuple in sentences:
-            if word_lem in sentence_tuple[1]:
-                ws = WordSentence(
-                    word_id=word.id,
-                    sentence_id=sentence_tuple[0],
-                )
-                ws.save_if_not_exists()
+    async for sentence in Sentence.all():
+        for word_str in nltk.word_tokenize(sentence.text):
+            word_lem = lemmatizer.lemmatize(word_str)
+            bword = Bword(lem=word_lem)
+            await bword.match_first()
+            async for translation in bword.get_translations():
+                if sentence.id not in translation.sentences:
+                    translation.sentences.append(sentence.id)
+                await translation.save()
 
     print("Connecting words to sentences done.")
-
-
-def find_words_in_book(book):
-    """
-    Find words in book using lem word for matching.
-    """
-    lemmatizer = nltk.WordNetLemmatizer()
-    book_contents = prepare_book_sentences(lemmatizer, book)
-    print(f"Loaded whole book '{book.title}': {len(book_contents)} sentences.")
-
-    # for word in Word.get_by_book(book.id):
-    for word in Word.newer_than(ParrotSettings.get_last_word_id()):
-        word_lem = lemmatizer.lemmatize(word.key_word)
-        for content in book_contents:
-            if word_lem in content.lems:
-                context = Context(
-                    content=content.sentence,
-                    word_id=word.id,
-                    book_id=book.id,
-                )
-                context.save_if_not_exists()
-
-        if not word.key_word.startswith(word_lem):
-            for content in book_contents:
-                if word.key_word in content.words:
-                    context = Context(
-                        content=content.sentence,
-                        word_id=word.id,
-                        book_id=book.id,
-                    )
-                    context.save_if_not_exists()
-
-
-def find_books():
-    """
-    For any book in db check is in library
-    Replace “ and ” to " in all books
-    """
-    for book in Book.all():
-        if book.path:
-            find_words_in_book(book)
-
-    ParrotSettings.update_last_settings_id()
 
 
 def filter_source(words: list) -> tuple[list, str] | None:
@@ -494,6 +437,8 @@ async def split_to_words(book_content, lemmatizer, bwords, relations) -> None:
         if lem in bwords:
             bword = bwords[lem]
             bword.count += 1
+            if word not in bword.declination:
+                bword.declination.append(word)
             bword.update_later = True
         else:
             bword = Bword(
@@ -501,6 +446,9 @@ async def split_to_words(book_content, lemmatizer, bwords, relations) -> None:
             )
             await bword.match_first()
             if bword.id:
+                bword.count += 1
+                if word not in bword.declination:
+                    bword.declination.append(word)
                 bword.update_later = True
             else:
                 bword = Bword(
@@ -641,7 +589,7 @@ async def tokenize_book_content(book_id, book_raw) -> None:
         task.cancel()
 
 
-async def load_book_content_cmd(book_path_str: str, book_id: int) -> Book:
+async def load_book_content_cmd(book_path: Path, book_id: int) -> Book:
     """
     Load book from path, and add book.
     """
@@ -650,7 +598,7 @@ async def load_book_content_cmd(book_path_str: str, book_id: int) -> Book:
     if book.title is None:
         raise ValueError(f"ERROR: Not found book for id = {book_id}.")
 
-    book_raw = get_book_content(Path(book_path_str))
+    book_raw = get_book_content(book_path)
 
     await tokenize_book_content(book_id, book_raw)
 

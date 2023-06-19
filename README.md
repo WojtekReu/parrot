@@ -10,6 +10,15 @@ Run alembic migrations:
 
     alembic upgrade head
 
+Add author and title to database.
+Load whole book to database:
+
+    ./load_book_content.py book.txt
+
+Load your translations to database:
+
+    ./load_translations.py translations_file.csv
+
 To get sentences list you have to:
 * translate using https://translate.google.com/?sl=en&tl=pl&op=translate
 * save translations
