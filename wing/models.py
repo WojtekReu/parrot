@@ -1,5 +1,5 @@
-from typing import AsyncIterable, Generator, List, Optional, Self
-from sqlalchemy import ForeignKey, JSON, select, String, update
+from typing import AsyncIterable, Generator, List, Self
+from sqlalchemy import ForeignKey, JSON, select, String, update, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql.expression import func
 from sqlalchemy.ext.asyncio import AsyncSession as Session
@@ -146,11 +146,14 @@ class BookContent(Base):
 
     nr: Mapped[int]
     book_id: Mapped[int] = mapped_column(ForeignKey("book.id"))
-    sentence: Mapped[str] = mapped_column(String(1000))
+    sentence: Mapped[str] = mapped_column(Text())
     book: Mapped["Book"] = relationship(back_populates="book_contents")
     bword_book_contents: Mapped[List["BwordBookContent"]] = relationship(
         back_populates="book_contents",
     )
+
+    def __repr__(self):
+        return f"<Content({self.id}): `{self.sentence[:20]}` nr={self.nr}>"
 
     @classmethod
     async def count_sentences_for_book(cls, book_id) -> int:
@@ -177,30 +180,8 @@ class Bword(Base):
     )
     translations: Mapped[List["Translation"]] = relationship(back_populates="bwords")
 
-    async def save_for_lem(self):
-        """
-        Match this object to other with the same lem
-        """
-        bword = self.find_lem()
-        if bword:
-            bword.declination = list(set(bword.declination + self.declination))
-            if bword.count is None:
-                bword.count = 1
-            bword.count += self.count
-            await bword.save()
-            self.id = bword.id
-        else:
-            await self.save()
-
-    async def find_lem(self) -> Optional[Self]:
-        """
-        Find bword using only lem attribute. Don't care about other attributes.
-        """
-        stmt = select(self.__class__).where(self.__class__.lem == self.lem)
-        async with Session(engine) as s:
-            row = (await s.execute(stmt)).first()
-            if row:
-                return row[0]
+    def __repr__(self):
+        return f"<Word({self.id}): {self.lem}, count={self.count}>"
 
     async def get_translations(self) -> AsyncIterable:
         """
@@ -252,8 +233,8 @@ class Sentence(Base):
 
     book_id = mapped_column(ForeignKey("book.id"))
     order: Mapped[int]
-    text: Mapped[str] = mapped_column(String(1000))
-    translation: Mapped[str] = mapped_column(String(1000), default=None, nullable=True)
+    text: Mapped[str] = mapped_column(Text())
+    translation: Mapped[str] = mapped_column(Text(), default=None, nullable=True)
     book: Mapped["Book"] = relationship(back_populates="sentences")
 
     def __repr__(self) -> str:

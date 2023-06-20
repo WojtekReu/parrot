@@ -79,25 +79,6 @@ def get_pattern(word: str) -> str:
     return r'([^.?!"]*\s' + word + r'[^.?!"]*[.?!]?)|(^' + word + r'[^.?!"]*[.?!]?)'
 
 
-def find_book(filename: str) -> Optional[Book]:
-    """
-    File book_list.csv contains 4 columns. Function will add book to db.
-    """
-    with open(BOOKS_PATH) as f:
-        csv_data = csv.reader(f, delimiter=";")
-        for row in csv_data:
-            if row[0] == filename:
-                book = Book(
-                    title=row[1],
-                    author=row[2],
-                    path=row[3],  # path to book in personal library if library contain this book
-                )
-                book.save_if_not_exists()
-                return book
-
-        raise ValueError(f"Path {filename} not in {BOOKS_PATH}")
-
-
 async def find_word(word_str: str) -> Bword:
     """
     Find word in db
@@ -109,44 +90,6 @@ async def find_word(word_str: str) -> Bword:
     return bword
 
 
-async def prepare_sentences(lemmatizer) -> list[tuple[int, list[str]]]:
-    """
-    Get all sentences and prepare lem for all words
-    """
-    sentences = []
-    async for sentence in Sentence.all():
-        sentence_list = [
-            lemmatizer.lemmatize(word) for word in nltk.word_tokenize(sentence.text)
-        ]
-        sentences.append((sentence.id, sentence_list))
-
-    return sentences
-
-
-def prepare_book_sentences(lemmatizer, book: Book) -> list[BookContent]:
-    """
-    Get whole book as list of BookContent
-    """
-    book_contents = []
-    book_content = get_book_content(book)
-
-    for sentence in nltk.sent_tokenize(book_content):
-        if sentence:
-            words = []
-            lems = []
-            for word in nltk.word_tokenize(sentence):
-                words.append(word)
-                lems.append(lemmatizer.lemmatize(word))
-            book_contents.append(
-                BookContent(
-                    sentence,
-                    tuple(words),
-                    tuple(lems),
-                )
-            )
-    return book_contents
-
-
 def get_book_content(book_path: Path) -> str:
     """
     Get whole book content
@@ -156,11 +99,12 @@ def get_book_content(book_path: Path) -> str:
     return book_content
 
 
-async def connect_words_to_sentences():
+async def connect_words_to_sentences() -> None:
     """
     Create relations between words and sentences
     """
     lemmatizer = nltk.WordNetLemmatizer()
+    sentence = None
     async for sentence in Sentence.all():
         for word_str in nltk.word_tokenize(sentence.text):
             word_lem = lemmatizer.lemmatize(word_str)
@@ -170,8 +114,6 @@ async def connect_words_to_sentences():
                 if sentence.id not in translation.sentences:
                     translation.sentences.append(sentence.id)
                 await translation.save()
-
-    print("Connecting words to sentences done.")
 
 
 def filter_source(words: list) -> tuple[list, str] | None:
@@ -460,16 +402,11 @@ async def split_to_words(book_content, lemmatizer, bwords, relations) -> None:
                 await bword.save()
             bwords[lem] = bword
 
-        if not bword.declination:
-            bword.declination = [word]
-        elif word not in bword.declination:
-            bword.declination.append(word)
+        if bword.count < MAX_STEM_OCCURRENCE:
+            bword_ids.add(bword)
 
-        if bword.count < MAX_STEM_OCCURRENCE and bword.id not in bword_ids:
-            bword_ids.add(bword.id)
-
-    for bword_id in bword_ids:
-        await relations.put((book_content.id, bword_id))
+    for bword2 in bword_ids:
+        await relations.put((book_content, bword2))
 
 
 async def join_word_to_sentence(book_content_id, bword_id) -> None:
@@ -530,8 +467,8 @@ async def task_split_to_words(book_contents, lemmatizer, bwords, relations, stat
 async def task_join_word_to_sentence(relations, status):
     while True:
         try:
-            book_content_id, bword_id = relations.get_nowait()
-            await join_word_to_sentence(book_content_id, bword_id)
+            book_content, bword = relations.get_nowait()
+            await join_word_to_sentence(book_content.id, bword.id)
             relations.task_done()
         except asyncio.QueueEmpty:
             # await relations.join()
