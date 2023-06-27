@@ -37,7 +37,7 @@ async def show_not_matched_for_translation(bword: Bword) -> list[tuple[int, Any]
     """
     Show and return enumerated list of book_contents.
     """
-    print("---- Automatically found sentences in book content -----")
+    print("------------------------ others ------------------------")
     nr = itertools.count(1)
     book_content_list = []
     async for bc in bword.get_book_contents():

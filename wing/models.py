@@ -15,23 +15,12 @@ class Base(DeclarativeBase):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    @property
-    def _column_names(self) -> Generator:
-        """
-        Generate column names for model
-        """
-        for column in self.metadata.tables[self.__tablename__].columns:
-            yield column.name
-
     def _set(self):
         """
         Set attributes from object to model
         """
-        table_name = self.__mapper__.local_table.description
-        self.table = self.__mapper__.local_table
-
         self.fns_where = []
-        for column in self.metadata.tables[table_name].columns:
+        for column in self.__table__.columns:
             value = getattr(self, column.description)
             if value:
                 fn_where = lambda x, y: x == y
@@ -52,13 +41,13 @@ class Base(DeclarativeBase):
         Set all model attributes when matched object found
         """
         self._set()
-        stmt = select(self.table).where(*self.fns_where)
+        stmt = select(self.__table__).where(*self.fns_where)
 
         async with Session(engine) as s:
             row = (await s.execute(stmt)).first()
             if row:
-                for column_name, value in zip(self._column_names, row):
-                    setattr(self, column_name, value)
+                for column, value in zip(self.__table__.columns, row):
+                    setattr(self, column.description, value)
 
     async def save(self) -> Self:
         """
