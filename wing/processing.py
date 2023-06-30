@@ -215,11 +215,13 @@ async def load_translations(book_id: Optional[int], filename_path: Path) -> None
                 if not translation.id:
                     await translation.save()
                 book_translation = BookTranslation(
-                    order=next(order),
                     book_id=book.id,
                     translation_id=translation.id,
                 )
-                await book_translation.save()
+                await book_translation.match_first()
+                if not book_translation.id:
+                    book_translation.order = next(order)
+                    await book_translation.save()
 
             else:
                 sentence = Sentence(
