@@ -13,8 +13,11 @@ def repair_new_lines(filename_path):
         data = f_input.read()
 
     newbook = ""
-
+    print_line = ""
     for line in data.split("\n"):
+        if print_line:
+            print(f"{print_line} ____ {line[:20]}")
+            print_line = ""
         newbook = f"{newbook}{line}"
         if (
             line
@@ -35,6 +38,7 @@ def repair_new_lines(filename_path):
                 newbook = f"{newbook}\n"
             else:
                 newbook = f"{newbook} "
+                print_line = line[-50:]
 
     new_book_path = Path(f"NEW_{filename_path.name}")
 
