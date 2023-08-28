@@ -356,12 +356,12 @@ async def add_sentence_book_content(book_id, sentence_nr, sentence, book_content
             sentence=sentence.split("\n")[0],
         )
         await book_content.save()
-        sentence = "\n".join(sentence.split("\n")[1:])[:255]
+        sentence = "\n".join(sentence.split("\n")[1:])
 
     book_content = BookContent(
         nr=next(sentence_nr),
         book_id=book_id,
-        sentence=sentence[:255],
+        sentence=sentence,
     )
     await book_content.save()
     await book_contents.put(book_content)
