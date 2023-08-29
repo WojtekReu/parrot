@@ -10,22 +10,30 @@ Run alembic migrations:
 
     alembic upgrade head
 
-Add author and title to database.
-Load whole book to database:
+Add author and title to database. You can import it from prepared file data/book_list.csv 
+separated by tabs (see book_list.example.csv):
 
-    ./load_book_content.py book.txt
+    ./import_books.py
+
+If you have book in txt format, you can load it content to database:
+
+    ./load_book_content.py Ernest_Hemingway/The_Old_man_and_the_Sea.txt
 
 Load your translations to database:
 
     ./load_translations.py translations_file.csv
 
-To get sentences list you have to:
+Run connect_words.py to link translations to sentences where your chosen word occurs.
+
+    ./connect_words.py
+
+The best way to prepare sentences list is using google translator and "saved":
 * translate using https://translate.google.com/?sl=en&tl=pl&op=translate
 * save translations
 * export translations to docs.google.com
 * import as csv separated by `;`
-* load to db using `./load_translations.py file.csv`
+* load to db using script `./load_translations.py file.csv`
 
-Run script to practice:
+Run script to practice new words:
 
     ./parrot.py
