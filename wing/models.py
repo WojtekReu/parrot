@@ -181,7 +181,7 @@ class Bword(Base):
             for row in (await s.execute(stmt)).all():
                 yield row[0]
 
-    async def get_book_contents(self) -> AsyncIterable:
+    async def get_book_contents(self, book_id=None) -> AsyncIterable:
         """
         Get all book_content for this bword_id, relation is in BwordBookContent
         """
@@ -191,8 +191,12 @@ class Bword(Base):
             select(BookContent)
             .join(BwordBookContent)
             .where(BwordBookContent.bword_id == self.id)
-            .order_by(BookContent.book_id, BookContent.nr)
         )
+        if book_id:
+            stmt = stmt.where(BookContent.book_id == book_id).order_by(func.random())
+        else:
+            stmt = stmt.order_by(BookContent.book_id, BookContent.nr)
+
         async with Session(engine) as s:
             for row in (await s.execute(stmt)).all():
                 yield row[0]

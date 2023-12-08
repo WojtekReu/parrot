@@ -245,6 +245,12 @@ async def learn(book_id: int, start_line: int) -> tuple[int, int]:
     f_list = await flashcard_list(book_id)
     for flashcard in f_list[start_line:]:
         try:
+            if flashcard.type == TYPE_WORD:
+                bword = Bword(id=flashcard.translation_obj.bword_id)
+                async for bc in bword.get_book_contents(book_id=book_id):
+                    print('=========================================================')
+                    print(bc.sentence)
+                    break  # only first sentence is needed
             your_response = input(f"{flashcard.text} - ").strip()
         except KeyboardInterrupt:
             return total, correct
@@ -262,7 +268,6 @@ async def learn(book_id: int, start_line: int) -> tuple[int, int]:
                 )
 
                 if not print_result:
-                    bword = Bword(id=flashcard.translation_obj.bword_id)
                     await show_not_matched_for_translation(bword)
 
     return total, correct
