@@ -12,6 +12,9 @@ numpy = "*"
 requests = "*"
 asyncpg = "*"
 psycopg2 = "*"
+pytest-asyncio = "*"
+fastapi = "*"
+uvicorn = {extras = ["standard"], version = "*"}
 
 [dev-packages]
 pytest = "*"

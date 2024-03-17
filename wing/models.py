@@ -153,6 +153,18 @@ class BookContent(Base):
         async with Session(engine) as s:
             return (await s.execute(stmt)).first()[0]
 
+    @classmethod
+    async def get_sentences(cls, word, book_id=None):
+        """
+        Find all sentences contained the word
+        """
+        stmt = select(cls).where(cls.sentence.contains(word)).order_by(cls.nr)
+        if book_id:
+            stmt = stmt.where(cls.book_id == book_id)
+        async with Session(engine) as s:
+            for row in (await s.execute(stmt)).all():
+                yield row[0]
+
 
 class Bword(Base):
     """
@@ -278,6 +290,24 @@ class Translation(Base):
                 word = row[0]
                 word.order = row[1]
                 yield word
+
+    @classmethod
+    async def get(cls, book_id: int, order: int):
+        """
+        Get translation for specific book and order
+        """
+        stmt = (
+            select(cls)
+            .join(BookTranslation)
+            .where(BookTranslation.book_id == book_id)
+            .where(BookTranslation.order == order)
+        )
+
+        async with Session(engine) as s:
+            row = (await s.execute(stmt)).first()
+            if row:
+                return row[0]
+
 
     async def get_book_contents(self) -> AsyncIterable[BookContent]:
         """

@@ -104,7 +104,6 @@ async def connect_words_to_sentences() -> None:
     Create relations between words and sentences
     """
     lemmatizer = nltk.WordNetLemmatizer()
-    sentence = None
     async for sentence in Sentence.all():
         for word_str in nltk.word_tokenize(sentence.text):
             word_lem = lemmatizer.lemmatize(word_str)
@@ -549,3 +548,19 @@ async def load_book_content_cmd(book_path: Path, book_id: int) -> Book:
     book.sentences_count = await BookContent.count_sentences_for_book(book.id)
     await book.save()
     return book
+
+
+async def match_word_definitions(word: str, sentence: str) -> list[str]:
+    """
+    Find definition for word from sentence
+    """
+    word_list = nltk.word_tokenize(sentence)
+    tags = nltk.pos_tag(word_list)
+    tags = [t[1] for t in tags if t[0] == word]
+    tag = tags[0] if tags else None
+    pos = tag_to_pos(tag)
+    definitions = []
+    for synset in nltk.corpus.wordnet.synsets(word, pos=pos):
+        definition = f"{synset.name()}: {synset.definition()}"
+        definitions.append(definition)
+    return definitions
