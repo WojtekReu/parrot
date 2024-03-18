@@ -9,12 +9,17 @@
         <div v-else-if="!status">Loading...</div>
         <div v-else-if="!translation">Translation didn't find</div>
         <div v-else>
-            <div v-if="sentences.sentences.length">
-                <p v-for="row in sentences.sentences.slice(0,3)" :key="row.id">{{ row.sentence }}</p>
+            <div v-if="sentences">
+                <div v-for="(book, key) in sentences" :key="key">
+                    <p>{{ book.title }} - {{ book.author }}</p>
+                    <ol class="sentences">
+                        <li v-for="sentence in book.sentences_list">{{ sentence.sentence }}</li>
+                    </ol>
+                </div>
             </div>
             <p><span class="description">Przetłumacz:</span> {{ translation.source }}</p>
             <p>
-                <input type="text" v-model="typedText" @keypress="ready">
+                <input type="text" v-focus v-model="typedText" @keypress="ready">
             </p>
         </div>
         <div v-if="yourAnswer">
@@ -32,6 +37,10 @@
 <script>
 import getBook from '@/composable/getBook'
 
+const focus = {
+  mounted: (el) => el.focus()
+}
+
 export default {
     props: ['id'],
     name: 'BookView',
@@ -41,10 +50,14 @@ export default {
 
         return { book, error }
     },
+        directives: {
+        // enables v-focus in template
+        focus
+    },
     data() {
         return {
             status: null,
-            translationId: '1',
+            translationId: '47',
             translation: null,
             error2: null,
             typedText: '',
@@ -88,6 +101,8 @@ export default {
                 this.rightAnswer = this.translation.text
                 this.yourAnswer = this.typedText
                 if (this.yourAnswer === this.rightAnswer) {
+                    "OK"
+                } else if (this.yourAnswer === '') {
                     this.getNextTranslation()
                 } else {
                     this.yourAnswer = this.typedText
@@ -122,5 +137,8 @@ export default {
 .translationId {
     width: 22px;
     text-align: center;
+}
+ol.sentences {
+    text-align: left;
 }
 </style>

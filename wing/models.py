@@ -200,8 +200,9 @@ class Bword(Base):
         if self.id is None:
             raise ValueError("Can't select book_contents because bword.id is None.")
         stmt = (
-            select(BookContent)
+            select(BookContent, Book)
             .join(BwordBookContent)
+            .join(Book)
             .where(BwordBookContent.bword_id == self.id)
         )
         if book_id:
@@ -211,7 +212,7 @@ class Bword(Base):
 
         async with Session(engine) as s:
             for row in (await s.execute(stmt)).all():
-                yield row[0]
+                yield row
 
 
 class BwordBookContent(Base):
