@@ -1,7 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from wing.web import all_books, get_book, get_translation, get_sentences
+from wing.web import (
+    all_books,
+    get_book,
+    get_translation,
+    get_sentences,
+    get_all_flashcards,
+    get_flashcard,
+    get_sentence,
+)
 
 app = FastAPI()
 
@@ -19,6 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/books")
 async def read_root():
     return await all_books()
@@ -30,7 +39,7 @@ async def read_book(book_id: int):
 
 
 @app.get("/translations_by_book/{book_id}/{order_nr}")
-async def read_translations_by_book(book_id: int, order_nr: int|None):
+async def read_translations_by_book(book_id: int, order_nr: int | None):
     if order_nr is None:
         order_nr = 1
     return await get_translation(book_id, order_nr)
@@ -40,3 +49,17 @@ async def read_translations_by_book(book_id: int, order_nr: int|None):
 async def fetch_sentences(book_id: int, bword_id: int):
     return await get_sentences(book_id, bword_id)
 
+
+@app.get("/flashcards/{book_id}")
+async def fetch_flashcards(book_id: int):
+    return await get_all_flashcards(book_id)
+
+
+@app.get("/flashcard/{flashcard_id}")
+async def fetch_flashcard(flashcard_id: int):
+    return await get_flashcard(flashcard_id)
+
+
+@app.get("/sentence/{sentence_id}")
+async def fetch_sentence(sentence_id: int):
+    return await get_sentence(sentence_id)

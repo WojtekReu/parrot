@@ -1,7 +1,7 @@
 import itertools
 from typing import Any
 
-from .models import Book, Bword, Translation
+from .models import Book, Word, Flashcard
 
 
 async def print_all_books() -> None:
@@ -17,11 +17,11 @@ def show_correct_translation(flashcard: Any) -> None:
     print(" " * spaces_nr + flashcard.translation)
 
 
-async def show_matched_for_translation(translation: Translation):
+async def show_matched_for_translation(translation: Flashcard):
     """
     Show results assigned book contents and sentences for translation
     """
-    print(f"EN: {translation.source},\t PL: {translation.text}")
+    print(f"EN: {translation.key_word},\t PL: {translation.translations}")
     nr = itertools.count(1)
     print("-------------------- Book Contents ---------------------")
     async for bc in translation.get_book_contents():
@@ -33,14 +33,14 @@ async def show_matched_for_translation(translation: Translation):
         print(f"\t\t {sentence.translation}")
 
 
-async def show_not_matched_for_translation(bword: Bword) -> list[tuple[int, Any]]:
+async def show_not_matched_for_translation(word: Word) -> list[tuple[int, Any]]:
     """
     Show and return enumerated list of book_contents.
     """
     print("------------------------ others ------------------------")
     nr = itertools.count(1)
     book_content_list = []
-    async for bc in bword.get_book_contents():
+    async for bc in word.get_book_contents():
         nr_current = next(nr)
         book_content_list.append((nr_current, bc))
         print(f"{bc.book_id}, {nr_current}: {bc.sentence}")

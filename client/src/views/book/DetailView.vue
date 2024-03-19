@@ -3,39 +3,40 @@
     <div v-if="book">
         <h1>{{ book.title }} - {{ book.author }}</h1>
     </div>
-    <p><input type="text" class="translationId" v-model="translationId"></p>
-    <div v-if="translationId">
+    <p>nr: <input type="text" class="flashcardNr" v-model="flashcardNr"></p>
+    <div v-if="flashcardNr">
         <div v-if="error2">{{ error2 }}</div>
         <div v-else-if="!status">Loading...</div>
-        <div v-else-if="!translation">Translation didn't find</div>
+        <div v-else-if="!flashcard">Translation didn't find</div>
         <div v-else>
             <div v-if="sentences">
-                <div v-for="(book, key) in sentences" :key="key">
-                    <p>{{ book.title }} - {{ book.author }}</p>
-                    <ol class="sentences">
-                        <li v-for="sentence in book.sentences_list">{{ sentence.sentence }}</li>
-                    </ol>
-                </div>
+                <ol class="sentences">
+                    <li v-for="sentence in sentences" :key="id">
+                        (nr: {{ sentence.nr }}) -
+                        {{ sentence.sentence }}
+                    </li>
+                </ol>
             </div>
-            <p><span class="description">Przetłumacz:</span> {{ translation.source }}</p>
+            <p><span class="description">Przetłumacz:</span> {{ flashcard.key_word }}</p>
             <p>
                 <input type="text" v-focus v-model="typedText" @keypress="ready">
             </p>
         </div>
         <div v-if="yourAnswer">
-            <p class="correct" v-if="yourAnswer === rightAnswer">
-                {{ yourAnswer }}: {{ source }}
+            <p class="correct" v-if="flashcard.translations.includes(yourAnswer)">
+                {{ source }} -> {{ yourAnswer }}
             </p>
             <div v-else>
                 <p class="incorrect">{{ yourAnswer }}</p>
-                <p>{{ translation.text }}</p>
+                <div v-for="translation in flashcard.translations">{{ translation }}</div>
             </div>
         </div>
     </div>
 </template>
 
 <script>
-import getBook from '@/composable/getBook'
+import { ref } from 'vue'
+import getFlashcardIds from '@/composable/getFlashcardIds'
 
 const focus = {
   mounted: (el) => el.focus()
@@ -45,20 +46,20 @@ export default {
     props: ['id'],
     name: 'BookView',
     setup(props) {
-        const { book, error, load } = getBook(props.id)
+        const { book, flashcards, error, load } = getFlashcardIds(props.id)
         load()
 
-        return { book, error }
+        return { book, flashcards, error }
     },
-        directives: {
+    directives: {
         // enables v-focus in template
         focus
     },
     data() {
         return {
             status: null,
-            translationId: '47',
-            translation: null,
+            flashcardNr: '',
+            flashcard: null,
             error2: null,
             typedText: '',
             yourAnswer: '',
@@ -70,24 +71,31 @@ export default {
     methods: {
         async fetchData() {
             this.status = null
-            if (this.translationId) {
+            if (this.flashcardNr) {
+                let fValues = this.flashcards[this.flashcardNr]
                 this.error2 = null
                 try {
                     let response = await fetch(
-                        `http://localhost:8000/translations_by_book/${this.id}/${this.translationId}`
+                        `http://localhost:8000/flashcard/${fValues.flashcard_id}`
                     )
                     if (!response.ok) {
-                        throw Error('ERROR: API result error for translation request')
+                        throw Error('ERROR: API result error for flashcard request')
                     }
-                    this.translation = await response.json()
-                    if (this.translation) {
-                        response = await fetch(
-                            `http://localhost:8000/fetch_sentences/${this.id}/${this.translation.bword_id}`
-                        )
-                        if (!response.ok) {
-                            throw Error('ERROR: API result error for fetch_senteces request')
+                    this.flashcard = await response.json()
+                    if (this.flashcard) {
+                        this.sentences = []
+                        for (const sentence_id of fValues.sentence_ids) {
+                            response = await fetch(
+                                `http://localhost:8000/sentence/${sentence_id}`
+                            )
+                            if (!response.ok) {
+                                throw Error('ERROR: API result error for sentece request')
+                            }
+                            let res = await response.json()
+                            if (res.nr !== 0) {
+                                this.sentences.push(res)
+                            }
                         }
-                        this.sentences = await response.json()
                     }
                     this.status = 'ready'
                 } catch (err) {
@@ -97,12 +105,10 @@ export default {
         },
         ready(keyboardEvent) {
             if (keyboardEvent.key === 'Enter') {
-                this.source = this.translation.source
-                this.rightAnswer = this.translation.text
+                this.source = this.flashcard.key_word
+                this.rightAnswer = this.flashcard.translations
                 this.yourAnswer = this.typedText
-                if (this.yourAnswer === this.rightAnswer) {
-                    "OK"
-                } else if (this.yourAnswer === '') {
+                if (this.yourAnswer === '') {
                     this.getNextTranslation()
                 } else {
                     this.yourAnswer = this.typedText
@@ -113,14 +119,14 @@ export default {
             }
         },
         getNextTranslation() {
-            this.translationId ++
+            this.flashcardNr ++
         }
     },
     mounted() {
         this.fetchData()
     },
     watch: {
-        translationId() {
+        flashcardNr() {
             this.fetchData()
         }
     }
@@ -134,7 +140,7 @@ export default {
 .incorrect {
     color: crimson;
 }
-.translationId {
+.flashcardNr {
     width: 22px;
     text-align: center;
 }

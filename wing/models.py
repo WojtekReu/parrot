@@ -61,13 +61,13 @@ class Base(DeclarativeBase):
             await s.commit()
             return self
 
-    def save_if_not_exists(self) -> None:
+    async def save_if_not_exists(self) -> None:
         """
         Save object if not exists in DB
         """
-        self.match_first()
+        await self.match_first()
         if not self.id:
-            self.save()
+            await self.save()
 
     @classmethod
     async def newer_than(cls, obj_id) -> AsyncIterable[Generator]:
@@ -100,49 +100,31 @@ class Book(Base):
     title: Mapped[str] = mapped_column(String(50))
     author: Mapped[str] = mapped_column(String(50))
     sentences_count: Mapped[int] = mapped_column(default=0)
+    words_count: Mapped[int] = mapped_column(default=0, nullable=True)
+    # relations
     sentences: Mapped[List["Sentence"]] = relationship(back_populates="book")
-    book_contents: Mapped[List["BookContent"]] = relationship(back_populates="book")
-    book_translations: Mapped[List["BookTranslation"]] = relationship(
-        back_populates="books"
-    )
 
     def __repr__(self):
         return f"<Book {self.id}: {self.title} - {self.author}>"
 
 
-class BookTranslation(Base):
+class Sentence(Base):
     """
-    Relation translation to book with order occurrence
-    """
-
-    __tablename__ = "book_translation"
-
-    order: Mapped[int]
-    book_id: Mapped[int] = mapped_column(ForeignKey("book.id"))
-    translation_id: Mapped[int] = mapped_column(ForeignKey("translation.id"))
-    books: Mapped[List["Book"]] = relationship(back_populates="book_translations")
-    translations: Mapped[List["Translation"]] = relationship(
-        back_populates="book_translations"
-    )
-
-
-class BookContent(Base):
-    """
-    Books content separated to sentences
+    All sentences in book ordered by nr
     """
 
-    __tablename__ = "book_content"
+    __tablename__ = "sentence"
 
     nr: Mapped[int]
     book_id: Mapped[int] = mapped_column(ForeignKey("book.id"))
     sentence: Mapped[str] = mapped_column(Text())
-    book: Mapped["Book"] = relationship(back_populates="book_contents")
-    bword_book_contents: Mapped[List["BwordBookContent"]] = relationship(
-        back_populates="book_contents",
-    )
+    # relations
+    book: Mapped["Book"] = relationship(back_populates="sentences")
+    sentence_flashcards: Mapped[List["SentenceFlashcard"]] = relationship(back_populates="sentence")
+    sentence_words: Mapped[List["SentenceWord"]] = relationship(back_populates="sentence")
 
     def __repr__(self):
-        return f"<Content({self.id}): `{self.sentence[:20]}` nr={self.nr}>"
+        return f"<Sentence({self.id}): nr={self.nr} `{self.sentence[:20]}`>"
 
     @classmethod
     async def count_sentences_for_book(cls, book_id) -> int:
@@ -166,142 +148,125 @@ class BookContent(Base):
                 yield row[0]
 
 
-class Bword(Base):
+class Word(Base):
     """
     All wards in books.
     """
 
-    __tablename__ = "bword"
+    __tablename__ = "word"
 
     count: Mapped[int] = mapped_column(default=0)
     lem: Mapped[str] = mapped_column(String(255), unique=True)
     declination: Mapped[list] = mapped_column(JSON, default=[])
-    bword_book_contents: Mapped[List["BwordBookContent"]] = relationship(
-        back_populates="bwords"
-    )
-    translations: Mapped[List["Translation"]] = relationship(back_populates="bwords")
+    definition: Mapped[str] = mapped_column(String(255), nullable=True)
+    # relations
+    flashcard_words: Mapped[List["FlashcardWord"]] = relationship(back_populates="word")
+    sentence_words: Mapped[List["SentenceWord"]] = relationship(back_populates="word")
 
     def __repr__(self):
         return f"<Word({self.id}): {self.lem}, count={self.count}>"
 
-    async def get_translations(self) -> AsyncIterable:
+    async def get_flashcards(self) -> AsyncIterable:
         """
-        Get translation for this bword
+        Get flashcards for this word
         """
-        stmt = select(Translation).where(Translation.bword_id == self.id)
+        stmt = (
+            select(Flashcard)
+            .join(FlashcardWord)
+            .where(FlashcardWord.word_id == self.id)
+            .where(FlashcardWord.flashcard_id == Flashcard.id)
+        )
         async with Session(engine) as s:
             for row in (await s.execute(stmt)).all():
                 yield row[0]
 
-    async def get_book_contents(self, book_id=None) -> AsyncIterable:
+    async def get_sentences(self, book_id=None) -> AsyncIterable:
         """
-        Get all book_content for this bword_id, relation is in BwordBookContent
+        Get all sentences for this word_id, relation is in SentenceWord
         """
         if self.id is None:
             raise ValueError("Can't select book_contents because bword.id is None.")
         stmt = (
-            select(BookContent, Book)
-            .join(BwordBookContent)
-            .join(Book)
-            .where(BwordBookContent.bword_id == self.id)
+            select(Sentence, Book)
+            .join(SentenceWord)
+            .where(SentenceWord.word_id == self.id)
+            .where(Sentence.book_id == Book.id)
         )
         if book_id:
-            stmt = stmt.where(BookContent.book_id == book_id).order_by(func.random())
+            stmt = stmt.where(Sentence.book_id == book_id).order_by(func.random())
         else:
-            stmt = stmt.order_by(BookContent.book_id, BookContent.nr)
+            stmt = stmt.order_by(Sentence.book_id, Sentence.nr)
 
         async with Session(engine) as s:
             for row in (await s.execute(stmt)).all():
                 yield row
 
 
-class BwordBookContent(Base):
+class SentenceWord(Base):
     """
     Relations words and sentences
     """
 
-    __tablename__ = "bword_book_content"
+    __tablename__ = "sentence_word"
 
-    bword_id: Mapped[int] = mapped_column(ForeignKey("bword.id"))
-    book_content_id: Mapped[int] = mapped_column(ForeignKey("book_content.id"))
-    bwords: Mapped[List["Bword"]] = relationship(back_populates="bword_book_contents")
-    book_contents: Mapped[List["BookContent"]] = relationship(
-        back_populates="bword_book_contents"
+    word_id: Mapped[int] = mapped_column(ForeignKey("word.id"))
+    sentence_id: Mapped[int] = mapped_column(ForeignKey("sentence.id"))
+    # relations
+    word: Mapped["Word"] = relationship(back_populates="sentence_words")
+    sentence: Mapped["Sentence"] = relationship(back_populates="sentence_words")
+
+
+class Flashcard(Base):
+    """
+    Words and phrases to learn
+    """
+
+    __tablename__ = "flashcard"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    key_word: Mapped[str] = mapped_column(String(200))
+    translations: Mapped[list] = mapped_column(JSON, default=[])
+    definition: Mapped[str] = mapped_column(String(255), nullable=True)
+    # relations
+    user: Mapped["User"] = relationship(back_populates="flashcards")
+    sentence_flashcards: Mapped[List["SentenceFlashcard"]] = relationship(
+        back_populates="flashcard"
     )
-
-
-class Sentence(Base):
-    """
-    Sentences to learn.
-    """
-
-    __tablename__ = "sentence"
-
-    book_id = mapped_column(ForeignKey("book.id"))
-    order: Mapped[int]
-    text: Mapped[str] = mapped_column(Text())
-    translation: Mapped[str] = mapped_column(Text(), default=None, nullable=True)
-    book: Mapped["Book"] = relationship(back_populates="sentences")
+    flashcard_words: Mapped[List["FlashcardWord"]] = relationship(back_populates="flashcard")
 
     def __repr__(self) -> str:
-        return f"<Sentence {self.id}: {self.text[:20]}>"
+        # return f"<Flashcard {self.id}: {self.key_word[:20] if self.key_word else ''}>"
+        return f"<Flashcard {self.id}>"
 
     @classmethod
-    async def get_by_book(cls, book_id: int) -> AsyncIterable:
+    async def get_ids_for_book(cls, book_id: int, user_id: int) -> AsyncIterable:
         """
-        Get sentences ordered by occurrence in text.
-        """
-        stmt = select(cls).where(cls.book_id == book_id).order_by(cls.order)
-        async with Session(engine) as s:
-            for sentence_tuple in (await s.execute(stmt)).all():
-                yield sentence_tuple[0]
-
-
-class Translation(Base):
-    """
-    Words to learn, each word may have many translations.
-    """
-
-    __tablename__ = "translation"
-
-    bword_id: Mapped[int] = mapped_column(ForeignKey("bword.id"))
-    source: Mapped[str] = mapped_column(String(100))
-    text: Mapped[str] = mapped_column(String(100))
-    sentences: Mapped[list] = mapped_column(JSON, default=[])
-    book_contents: Mapped[list] = mapped_column(JSON, default=[])
-    bwords: Mapped["Bword"] = relationship(back_populates="translations")
-    book_translations: Mapped[List["BookTranslation"]] = relationship(
-        back_populates="translations",
-    )
-
-    @classmethod
-    async def get_by_book(cls, book_id: int) -> AsyncIterable:
-        """
-        Get all translations by book_id, relation is in BookTranslation
+        For book get all IDs (sentence_id and flashcard_id) ordered by sentence in book
         """
         stmt = (
-            select(cls)
-            .join(BookTranslation)
-            .add_columns(BookTranslation.order)
-            .where(BookTranslation.book_id == book_id)
-            .order_by(BookTranslation.order)
+            select(SentenceFlashcard)
+            .join(Sentence)
+            .join(cls)
+            .add_columns(Sentence.nr)
+            .where(cls.user_id == user_id)
+            .where(Sentence.book_id == book_id)
         )
         async with Session(engine) as s:
             for row in (await s.execute(stmt)).all():
-                word = row[0]
-                word.order = row[1]
-                yield word
+                result = row[0]
+                result.nr = row[1]
+                yield result
 
     @classmethod
-    async def get(cls, book_id: int, order: int):
+    async def get(cls, book_id: int, order: int):  # FIXME: outdated
         """
         Get translation for specific book and order
         """
         stmt = (
             select(cls)
-            .join(BookTranslation)
-            .where(BookTranslation.book_id == book_id)
-            .where(BookTranslation.order == order)
+            # .join(BookTranslation)
+            # .where(BookTranslation.book_id == book_id)
+            # .where(BookTranslation.order == order)
         )
 
         async with Session(engine) as s:
@@ -309,26 +274,59 @@ class Translation(Base):
             if row:
                 return row[0]
 
-
-    async def get_book_contents(self) -> AsyncIterable[BookContent]:
+    async def get_book_contents(self) -> AsyncIterable[Sentence]:
         """
         Iterate by id in book_contents and yield BookContent
         """
         if self.book_contents:
             for book_content_id in self.book_contents:
-                book_content = BookContent(id=book_content_id)
+                book_content = Sentence(id=book_content_id)
                 await book_content.match_first()
                 yield book_content
 
-    async def get_sentences(self) -> AsyncIterable[Sentence]:
-        """
-        Iterate by id in sentences and yield Sentence for assigned translation
-        """
-        if self.sentences:
-            for sentence_id in self.sentences:
-                sentence = Sentence(id=sentence_id)
-                await sentence.match_first()
-                yield sentence
+
+class SentenceFlashcard(Base):
+    """
+    Relation between Sentence and Flashcard
+    """
+
+    __tablename__ = "sentence_flashcard"
+
+    sentence_id: Mapped[int] = mapped_column(ForeignKey("sentence.id"))
+    flashcard_id: Mapped[int] = mapped_column(ForeignKey("flashcard.id"))
+    # relations
+    sentence: Mapped["Sentence"] = relationship(back_populates="sentence_flashcards")
+    flashcard: Mapped["Flashcard"] = relationship(back_populates="sentence_flashcards")
+
+
+class FlashcardWord(Base):
+    """
+    Relationship between Flashcard and Word
+    """
+
+    __tablename__ = "flashcard_word"
+
+    flashcard_id: Mapped[int] = mapped_column(ForeignKey("flashcard.id"))
+    word_id: Mapped[int] = mapped_column(ForeignKey("word.id"))
+    # relations
+    flashcard: Mapped["Flashcard"] = relationship(back_populates="flashcard_words")
+    word: Mapped["Word"] = relationship(back_populates="flashcard_words")
+
+
+class User(Base):
+    """
+    User
+    """
+
+    __tablename__ = "user"
+
+    username: Mapped[str] = mapped_column(String(40), unique=True)
+    password: Mapped[str] = mapped_column(String(255))
+    mail: Mapped[str] = mapped_column(String(255), unique=True)
+    first_name: Mapped[str] = mapped_column(String(40))
+    last_name: Mapped[str] = mapped_column(String(40))
+    # relations
+    flashcards: Mapped[List["Flashcard"]] = relationship(back_populates="user")
 
 
 class ParrotSettings(Base):
@@ -355,7 +353,7 @@ class ParrotSettings(Base):
         """
         Get max id from Word model and save it to settings.
         """
-        last_word_id = Bword.get_max_id()
+        last_word_id = Word.get_max_id()
         with Session(engine) as s:
             stmt_update = (
                 update(cls)
@@ -364,20 +362,3 @@ class ParrotSettings(Base):
             )
             s.execute(stmt_update)
             s.commit()
-
-
-async def max_order_for_book_id(book_id: int) -> int:
-    """
-    Return max order value for Translation relation and Sentence models.
-    """
-    stmt = select(func.max(BookTranslation.order)).where(BookTranslation.book_id == book_id)
-    async with Session(engine) as s:
-        row = (await s.execute(stmt)).first()
-        wb_max = row[0] if row[0] else 0
-
-    stmt = select(func.max(Sentence.order)).where(Sentence.book_id == book_id)
-    async with Session(engine) as s:
-        row = (await s.execute(stmt)).first()
-        s_max = row[0] if row[0] else 0
-
-    return max(wb_max, s_max)

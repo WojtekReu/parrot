@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <p>Tutaj możesz poćwiczyć zapamiętywanie słówek.</p>
+    <p>Czytaj książki i ucz się angielskiego.</p>
   </div>
 </template>
 
