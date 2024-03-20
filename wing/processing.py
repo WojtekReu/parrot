@@ -36,11 +36,6 @@ from .structure import (
     TYPE_WORD,
 )
 from .messages import book_created_message, book_not_found_message, loading_message
-from .views import (
-    show_matched_for_translation,
-    show_not_matched_for_translation,
-    show_correct_translation,
-)
 
 # Suppress only the single warning from urllib3 needed.
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
@@ -486,8 +481,7 @@ async def load_book_content_cmd(book_path: Path, book_id: int) -> Book:
     await tokenize_book_content(book_id, book_raw)
 
     book.sentences_count = await Sentence.count_sentences_for_book(book.id)
-    book.words_count = 0  # TODO: prepare count words
-    # book.flashcards_to_learn_count = 0 # TODO: prepare this
+    book.words_count = await Sentence.count_words_for_book(book.id)
     await book.save()
     return book
 

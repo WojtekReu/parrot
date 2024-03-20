@@ -1,9 +1,7 @@
-from dataclasses import dataclass
-from typing import Optional, Any
 from wing.alchemy import ADVERBS_FILE, PREPOSITIONS_FILE, PRONOUNS_FILE
 
-TYPE_WORD = 'W'
-TYPE_SENTENCE = 'S'
+TYPE_WORD = "W"
+TYPE_SENTENCE = "S"
 
 DEFAULT_BOOK_NR = 1
 DEFAULT_LINE_NR = 0
@@ -22,15 +20,6 @@ with open(PRONOUNS_FILE) as f:
 
 with open(PREPOSITIONS_FILE) as f:
     PREPOSITIONS = (preposition for preposition in f.read().split())
-
-
-@dataclass
-class Flashcard:
-    order: int
-    text: str
-    translation: str
-    type: str
-    translation_obj: Optional[Any]
 
 
 def tag_to_pos(tag):

@@ -1,5 +1,5 @@
 from typing import AsyncIterable, Generator, List, Self
-from sqlalchemy import ForeignKey, JSON, select, String, update, Text
+from sqlalchemy import ForeignKey, JSON, select, String, update, Text, distinct
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql.expression import func
 from sqlalchemy.ext.asyncio import AsyncSession as Session
@@ -136,6 +136,20 @@ class Sentence(Base):
             return (await s.execute(stmt)).first()[0]
 
     @classmethod
+    async def count_words_for_book(cls, book_id) -> int:
+        """
+        Count all words matched for book_id
+        """
+        stmt = (
+            select(func.count(distinct(SentenceWord.word_id)))
+            .select_from(cls)
+            .join(SentenceWord)
+            .where(cls.book_id == book_id)
+        )
+        async with Session(engine) as s:
+            return (await s.execute(stmt)).first()[0]
+
+    @classmethod
     async def get_sentences(cls, word, book_id=None):
         """
         Find all sentences contained the word
@@ -215,6 +229,9 @@ class SentenceWord(Base):
     word: Mapped["Word"] = relationship(back_populates="sentence_words")
     sentence: Mapped["Sentence"] = relationship(back_populates="sentence_words")
 
+    def __repr__(self):
+        return f"<SentenceWord({self.id}): w={self.word_id}, s={self.sentence_id}>"
+
 
 class Flashcard(Base):
     """
@@ -235,8 +252,7 @@ class Flashcard(Base):
     flashcard_words: Mapped[List["FlashcardWord"]] = relationship(back_populates="flashcard")
 
     def __repr__(self) -> str:
-        # return f"<Flashcard {self.id}: {self.key_word[:20] if self.key_word else ''}>"
-        return f"<Flashcard {self.id}>"
+        return f"<Flashcard {self.id}: {self.key_word[:30]}>"
 
     @classmethod
     async def get_ids_for_book(cls, book_id: int, user_id: int) -> AsyncIterable:
@@ -257,33 +273,6 @@ class Flashcard(Base):
                 result.nr = row[1]
                 yield result
 
-    @classmethod
-    async def get(cls, book_id: int, order: int):  # FIXME: outdated
-        """
-        Get translation for specific book and order
-        """
-        stmt = (
-            select(cls)
-            # .join(BookTranslation)
-            # .where(BookTranslation.book_id == book_id)
-            # .where(BookTranslation.order == order)
-        )
-
-        async with Session(engine) as s:
-            row = (await s.execute(stmt)).first()
-            if row:
-                return row[0]
-
-    async def get_book_contents(self) -> AsyncIterable[Sentence]:
-        """
-        Iterate by id in book_contents and yield BookContent
-        """
-        if self.book_contents:
-            for book_content_id in self.book_contents:
-                book_content = Sentence(id=book_content_id)
-                await book_content.match_first()
-                yield book_content
-
 
 class SentenceFlashcard(Base):
     """
@@ -298,6 +287,9 @@ class SentenceFlashcard(Base):
     sentence: Mapped["Sentence"] = relationship(back_populates="sentence_flashcards")
     flashcard: Mapped["Flashcard"] = relationship(back_populates="sentence_flashcards")
 
+    def __repr__(self):
+        return f"<SentenceFlashcard({self.id}): s={self.sentence_id}, f={self.flashcard_id}>"
+
 
 class FlashcardWord(Base):
     """
@@ -311,6 +303,9 @@ class FlashcardWord(Base):
     # relations
     flashcard: Mapped["Flashcard"] = relationship(back_populates="flashcard_words")
     word: Mapped["Word"] = relationship(back_populates="flashcard_words")
+
+    def __repr__(self):
+        return f"<FlashcardWord({self.id}): f={self.flashcard_id}, w={self.word_id}>"
 
 
 class User(Base):

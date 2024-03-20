@@ -4,6 +4,13 @@
     {{ error }}
   </div>
   <table class="book-list">
+    <tr>
+      <th>ID</th>
+      <th>Title</th>
+      <th>Author</th>
+      <th>Sentences</th>
+      <th>Words</th>
+    </tr>
     <tr v-for="book in books" :key="book.id">
       <Book :book="book" />
     </tr>
