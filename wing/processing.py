@@ -279,85 +279,6 @@ def cut_html(source: str) -> str:
     return re.sub(r"<.*?>", "", source)
 
 
-async def add_sentence_book_content(book_id, sentence_nr, sentence_text, book_contents) -> None:
-    if not sentence_text:
-        return
-
-    if sentence_text.lower().startswith("chapter "):
-        sentence = Sentence(
-            nr=next(sentence_nr),
-            book_id=book_id,
-            sentence=sentence_text.split("\n")[0],
-        )
-        await sentence.save()
-        sentence_text = "\n".join(sentence_text.split("\n")[1:])
-
-    sentence = Sentence(
-        nr=next(sentence_nr),
-        book_id=book_id,
-        sentence=sentence_text,
-    )
-    await sentence.save()
-    await book_contents.put(sentence)
-
-
-async def split_to_words(
-        sentence: Sentence,
-        lemmatizer,
-        words_dict,
-        relations,
-) -> None:
-    words_set = set()
-    for word_str in nltk.word_tokenize(sentence.sentence):
-        if not word_str.isalpha():
-            continue
-
-        word_str = word_str.lower()
-        lem = lemmatizer.lemmatize(word_str)
-        if len(lem) < MIN_LEM_WORD:
-            continue
-
-        if lem in words_dict:
-            word_object = words_dict[lem]
-            word_object.count += 1
-            if word_str not in word_object.declination:
-                word_object.declination.append(word_str)
-            word_object.update_later = True
-        else:
-            word_object = Word(
-                lem=lem,
-            )
-            await word_object.match_first()
-            if word_object.id:
-                word_object.count += 1
-                if word_str not in word_object.declination:
-                    word_object.declination.append(word_str)
-                word_object.update_later = True
-            else:
-                word_object = Word(
-                    lem=lem,
-                    declination=[word_str],
-                    count=1,
-                )
-                word_object.update_later = False
-                await word_object.save()
-            words_dict[lem] = word_object
-
-        if word_object.count < MAX_STEM_OCCURRENCE:
-            words_set.add(word_object)
-
-    for word2 in words_set:
-        await relations.put((sentence, word2))
-
-
-async def join_word_to_sentence(sentence_id, word_id) -> None:
-    sentence_word = SentenceWord(
-        sentence_id=sentence_id,
-        word_id=word_id,
-    )
-    await sentence_word.save()
-
-
 async def save_bwords_to_db(words, status) -> None:
     while True:
         if status["r"]:
@@ -379,7 +300,25 @@ async def task_add_sentence_book_content(book_id, sentence_nr, sentences: asynci
     while True:
         try:
             sentence_text = sentences.get_nowait()
-            await add_sentence_book_content(book_id, sentence_nr, sentence_text, book_contents)
+            if not sentence_text:
+                return
+            
+            if sentence_text.lower().startswith("chapter "):
+                sentence = Sentence(
+                    nr=next(sentence_nr),
+                    book_id=book_id,
+                    sentence=sentence_text.split("\n")[0],
+                )
+                await sentence.save()
+                sentence_text = "\n".join(sentence_text.split("\n")[1:])
+            
+            sentence = Sentence(
+                nr=next(sentence_nr),
+                book_id=book_id,
+                sentence=sentence_text,
+            )
+            await sentence.save()
+            await book_contents.put(sentence)
             sentences.task_done()
         except asyncio.QueueEmpty:
             # await sentences.join()
@@ -390,11 +329,54 @@ async def task_add_sentence_book_content(book_id, sentence_nr, sentences: asynci
             await asyncio.sleep(0.1)
 
 
-async def task_split_to_words(book_contents, lemmatizer, words, relations, status):
+async def task_split_to_words(book_contents, lemmatizer, words_dict, relations, status):
+    stopwords = set(nltk.corpus.stopwords.words('english'))
     while True:
         try:
-            book_content = book_contents.get_nowait()
-            await split_to_words(book_content, lemmatizer, words, relations)
+            sentence = book_contents.get_nowait()
+            # run task
+            words_set = set()
+            for word_str in nltk.word_tokenize(sentence.sentence):
+                if not word_str.isalpha():
+                    continue
+            
+                word_str = word_str.lower()
+                lem = lemmatizer.lemmatize(word_str)
+                if len(lem) < MIN_LEM_WORD or lem in stopwords:
+                    continue
+            
+                if lem in words_dict:
+                    word_object = words_dict[lem]
+                    word_object.count += 1
+                    if word_str not in word_object.declination:
+                        word_object.declination.append(word_str)
+                    word_object.update_later = True
+                else:
+                    word_object = Word(
+                        lem=lem,
+                    )
+                    await word_object.match_first()
+                    if word_object.id:
+                        word_object.count += 1
+                        if word_str not in word_object.declination:
+                            word_object.declination.append(word_str)
+                        word_object.update_later = True
+                    else:
+                        word_object = Word(
+                            lem=lem,
+                            declination=[word_str],
+                            count=1,
+                        )
+                        word_object.update_later = False
+                        await word_object.save()
+                    words_dict[lem] = word_object
+            
+                if word_object.count < MAX_STEM_OCCURRENCE:
+                    words_set.add(word_object)
+            
+            for word2 in words_set:
+                await relations.put((sentence, word2))
+
             book_contents.task_done()
         except asyncio.QueueEmpty:
             # await book_contents.join()
@@ -408,8 +390,12 @@ async def task_split_to_words(book_contents, lemmatizer, words, relations, statu
 async def task_join_word_to_sentence(relations, status):
     while True:
         try:
-            book_content, word = relations.get_nowait()
-            await join_word_to_sentence(book_content.id, word.id)
+            sentence, word = relations.get_nowait()
+            sentence_word = SentenceWord(
+                sentence_id=sentence.id,
+                word_id=word.id,
+            )
+            await sentence_word.save()
             relations.task_done()
         except asyncio.QueueEmpty:
             # await relations.join()
@@ -438,7 +424,7 @@ async def process_words(book_contents, lemmatizer, words, relations, tasks, stat
 async def process_word_sentence_relation(relations, tasks, status):
     task = asyncio.create_task(
         task_join_word_to_sentence(relations, status),
-        name=f"join word to sentnece"
+        name=f"join word to sentence"
     )
     tasks.append(task)
 
