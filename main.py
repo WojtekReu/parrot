@@ -8,6 +8,7 @@ from wing.web import (
     get_all_flashcards,
     get_flashcard,
     get_sentence,
+    get_word,
 )
 
 app = FastAPI()
@@ -58,3 +59,8 @@ async def fetch_sentences(word_id: int):
 @app.get("/sentence/{sentence_id}")
 async def fetch_sentence(sentence_id: int):
     return await get_sentence(sentence_id)
+
+
+@app.get("/word/{word_id}")
+async def fetch_word(word_id: int):
+    return await get_word(word_id)

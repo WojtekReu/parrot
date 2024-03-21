@@ -65,11 +65,20 @@ async def get_flashcard(flashcard_id) -> dict:
     """
     flashcard = Flashcard(id=flashcard_id)
     await flashcard.match_first()
-    return {
+    response = {
         "id": flashcard.id,
         "key_word": flashcard.key_word,
         "translations": flashcard.translations,
+        "words": [],
     }
+    async for word in flashcard.get_words():
+        response["words"].append({
+            "id": word.id,
+            "lem": word.lem,
+            "declination": word.declination,
+            "definition": word.definition,
+        })
+    return response
 
 
 async def get_sentence(sentence_id) -> dict:
@@ -82,4 +91,19 @@ async def get_sentence(sentence_id) -> dict:
         "id": sentence.id,
         "nr": sentence.nr,
         "sentence": sentence.sentence,
+    }
+
+
+async def get_word(word_id: int) -> dict:
+    """
+    Get one word
+    """
+    word = Word(id=word_id)
+    await word.match_first()
+    return {
+        "id": word.id,
+        "lem": word.lem,
+        "declination": word.declination,
+        "definition": word.definition,
+        "count": word.count,
     }

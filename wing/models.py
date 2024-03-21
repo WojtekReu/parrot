@@ -188,7 +188,6 @@ class Word(Base):
             select(Flashcard)
             .join(FlashcardWord)
             .where(FlashcardWord.word_id == self.id)
-            .where(FlashcardWord.flashcard_id == Flashcard.id)
         )
         async with Session(engine) as s:
             for row in (await s.execute(stmt)).all():
@@ -272,6 +271,19 @@ class Flashcard(Base):
                 result = row[0]
                 result.nr = row[1]
                 yield result
+
+    async def get_words(self) -> AsyncIterable:
+        """
+        Get words related to this flashcard
+        """
+        stmt = (
+            select(Word)
+            .join(FlashcardWord)
+            .where(FlashcardWord.flashcard_id == self.id)
+        )
+        async with Session(engine) as s:
+            for row in (await s.execute(stmt)).all():
+                yield row[0]
 
 
 class SentenceFlashcard(Base):
