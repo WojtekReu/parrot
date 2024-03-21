@@ -4,7 +4,7 @@ import itertools
 import json
 import re
 from pathlib import Path
-from typing import Optional, AsyncIterable
+from typing import Optional
 
 import nltk
 import requests
@@ -22,7 +22,7 @@ from .models import (
     FlashcardWord,
     User,
 )
-from .alchemy import API_URL, BOOKS_PATH, PONS_SECRET_KEY
+from .alchemy import API_URL, PONS_SECRET_KEY
 from .structure import (
     ADVERBS,
     DETERMINERS,
@@ -148,9 +148,20 @@ async def load_translations(book_id: Optional[int], filename_path: Path) -> None
     with open(filename_path) as f:
         csv_data = csv.reader(f, delimiter=";")
         for row in csv_data:
-            word_str, translation_str = row[0], row[1]
-            lem = lemmatize(lemmatizer, word_str)
-            if len(lem.strip().split()) == 1:
+            source_text, translation_str = row[0], row[1]
+            flashcard = Flashcard(
+                user_id=user.id,
+                key_word=source_text,
+            )
+            async for result in flashcard.all():
+                if result.translations == [translation_str]:
+                    flashcard = result
+            if not flashcard.id:
+                flashcard.translations = [translation_str]
+                await flashcard.save()
+
+            for word_str in source_text.replace(",", "").split():
+                lem = lemmatize(lemmatizer, word_str)
                 word = Word(lem=lem)
                 await word.match_first()
                 if not word.declination:
@@ -158,17 +169,6 @@ async def load_translations(book_id: Optional[int], filename_path: Path) -> None
                 elif word_str not in word.declination:
                     word.declination.append(word_str)
                 await word.save()
-
-                flashcard = Flashcard(
-                    user_id=user.id,
-                    key_word=word_str,
-                )
-                async for result in flashcard.all():
-                    if result.translations == [translation_str]:
-                        flashcard = result
-                if not flashcard.id:
-                    flashcard.translations = [translation_str]
-                    await flashcard.save()
 
                 flashcard_word = FlashcardWord(
                     word_id=word.id,
@@ -178,28 +178,28 @@ async def load_translations(book_id: Optional[int], filename_path: Path) -> None
                 if not flashcard_word.id:
                     await flashcard_word.save()
 
-                sentence_exists = False
-                async for sentence, _ in word.get_sentences(book_id):
-                    sentence_exists = True
-                    sentence_flashcard = SentenceFlashcard(
-                        sentence_id=sentence.id,
-                        flashcard_id=flashcard.id,
-                    )
-                    await sentence_flashcard.match_first()
-                    if not sentence_flashcard.id:
-                        await sentence_flashcard.save()
-
-                if not sentence_exists:
-                    default_sentence = Sentence(
-                        book_id=book.id,
-                        nr=0,
-                    )
-                    await default_sentence.match_first()
-                    sentence_flashcard = SentenceFlashcard(
-                        sentence_id=default_sentence.id,
-                        flashcard_id=flashcard.id,
-                    )
+            sentence_exists = False
+            async for sentence, _ in word.get_sentences(book_id):
+                sentence_exists = True
+                sentence_flashcard = SentenceFlashcard(
+                    sentence_id=sentence.id,
+                    flashcard_id=flashcard.id,
+                )
+                await sentence_flashcard.match_first()
+                if not sentence_flashcard.id:
                     await sentence_flashcard.save()
+
+            if not sentence_exists:
+                default_sentence = Sentence(
+                    book_id=book.id,
+                    nr=0,
+                )
+                await default_sentence.match_first()
+                sentence_flashcard = SentenceFlashcard(
+                    sentence_id=default_sentence.id,
+                    flashcard_id=flashcard.id,
+                )
+                await sentence_flashcard.save()
 
 
 def translate(word: str, log_output) -> list[tuple[str, str]]:
@@ -304,7 +304,7 @@ async def add_sentence_book_content(book_id, sentence_nr, sentence_text, book_co
 async def split_to_words(
         sentence: Sentence,
         lemmatizer,
-        words_list,
+        words_dict,
         relations,
 ) -> None:
     words_set = set()
@@ -317,8 +317,8 @@ async def split_to_words(
         if len(lem) < MIN_LEM_WORD:
             continue
 
-        if lem in words_list:
-            word_object = words_list[lem]
+        if lem in words_dict:
+            word_object = words_dict[lem]
             word_object.count += 1
             if word_str not in word_object.declination:
                 word_object.declination.append(word_str)
@@ -341,7 +341,7 @@ async def split_to_words(
                 )
                 word_object.update_later = False
                 await word_object.save()
-            words_list[lem] = word_object
+            words_dict[lem] = word_object
 
         if word_object.count < MAX_STEM_OCCURRENCE:
             words_set.add(word_object)
