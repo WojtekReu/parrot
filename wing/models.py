@@ -1,5 +1,5 @@
 from typing import AsyncIterable, Generator, List, Self
-from sqlalchemy import ForeignKey, JSON, select, String, update, Text, distinct
+from sqlalchemy import ForeignKey, JSON, select, String, update, Text, distinct, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql.expression import func
 from sqlalchemy.ext.asyncio import AsyncSession as Session
@@ -170,15 +170,33 @@ class Word(Base):
     __tablename__ = "word"
 
     count: Mapped[int] = mapped_column(default=0)
-    lem: Mapped[str] = mapped_column(String(255), unique=True)
+    pos: Mapped[str] = mapped_column(String(1), default=None, nullable=True)
+    lem: Mapped[str] = mapped_column(String(255))
     declination: Mapped[list] = mapped_column(JSON, default=[])
     definition: Mapped[str] = mapped_column(String(255), nullable=True)
     # relations
     flashcard_words: Mapped[List["FlashcardWord"]] = relationship(back_populates="word")
     sentence_words: Mapped[List["SentenceWord"]] = relationship(back_populates="word")
 
+    __table_args__ = (UniqueConstraint("pos", "lem", name="pos_lem_unique"),)
+
     def __repr__(self):
         return f"<Word({self.id}): {self.lem}, count={self.count}>"
+
+    async def match_by_lem_pos(self) -> Self:
+        """
+        Return object when found
+        """
+        stmt = (
+            select(Word)
+            .where(self.__class__.lem == self.lem)
+            .where(self.__class__.pos == self.pos)
+        )
+        async with Session(engine) as s:
+            result = (await s.execute(stmt)).first()
+            if result:
+                return result[0]
+
 
     async def get_flashcards(self) -> AsyncIterable:
         """

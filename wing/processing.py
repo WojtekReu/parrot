@@ -472,6 +472,127 @@ async def load_book_content_cmd(book_path: Path, book_id: int) -> Book:
     return book
 
 
+def create_word(
+        sentence_id: int,
+        word_str: str,
+        tag: str,
+        pos: str,
+        empty: bool,
+        dest: dict[str, Word],
+) -> None:
+    """
+    Create Word object and add to dest dict
+    """
+    lem = nltk.corpus.wordnet.morphy(word_str, pos) if pos else None
+    word = Word(
+        count=1,
+        lem=lem if lem else word_str,
+        pos=pos,
+        declination={} if empty else {tag: word_str},
+    )
+    if word.lem not in dest:
+        word.sentence_ids = set()
+        word.sentence_ids.add(sentence_id)
+        dest[word.lem] = word
+    elif tag not in dest[word.lem].declination and not empty:
+        dest[word.lem].sentence_ids.add(sentence_id)
+        dest[word.lem].declination[tag] = word.declination
+
+
+async def load_book_content_cmd2(book_path: Path, book_id: int) -> Book:
+    """
+    Load book from path, and add book.
+    """
+    book = Book(id=book_id)
+    await book.match_first()
+    if book.title is None:
+        raise ValueError(f"ERROR: Not found book for id = {book_id}.")
+
+    book_raw = get_book_content(book_path)
+    stopwords = set(nltk.corpus.stopwords.words("english"))
+
+    sentence_nr = itertools.count()
+    nouns = {}  # n
+    verbs = {}  # v
+    adverbs = {}  # r
+    adjectives = {}  # a
+    others = {}
+    for sentence_text in nltk.sent_tokenize(book_raw):
+        if not sentence_text:
+            continue
+
+        if sentence_text.lower().startswith("chapter "):
+            sentence = Sentence(
+                nr=next(sentence_nr),
+                book_id=book_id,
+                sentence=sentence_text.split("\n")[0],
+            )
+            await sentence.save()
+            sentence_text = "\n".join(sentence_text.split("\n")[1:])
+
+        sentence = Sentence(
+            nr=next(sentence_nr),
+            book_id=book_id,
+            sentence=sentence_text,
+        )
+        await sentence.save()
+
+        for word_str, tag in nltk.pos_tag(nltk.word_tokenize(sentence_text)):
+            if tag == 'DT' or tag == 'CD' or tag == 'MD' or len(word_str) < MIN_LEM_WORD or word_str in stopwords:
+                continue
+
+            if tag in ("NN", "NNP", "NNPS", "NNS"):
+                empty = bool(tag in ("NN", "NNP"))
+                pos = nltk.corpus.wordnet.NOUN  # n
+                dest = nouns
+
+            elif tag in ("VB", "VBD", "VBG", "VBN", "VBP", "VBZ"):
+                empty = bool(tag in ("VB", "VBP"))
+                pos = nltk.corpus.wordnet.VERB  # v
+                dest = verbs
+
+            elif tag in ("RB", "RBR", "RBS"):
+                empty = bool(tag == "RB")
+                pos = nltk.corpus.wordnet.ADV  # r
+                dest = adverbs
+
+            elif tag in ("JJ", "JJR", "JJS"):
+                empty = bool(tag == "JJ")
+                pos = nltk.corpus.wordnet.ADJ  # a
+                dest = adjectives
+
+            else:
+                empty = True
+                pos = None
+                dest = others
+
+            create_word(sentence.id, word_str.lower(), tag, pos, empty, dest)
+
+    for dest in (nouns, verbs, adverbs, adjectives, others):
+        for lem, word in dest.items():
+
+            word_existed = await word.match_by_lem_pos()
+            if word_existed:
+                word_existed.count += 1
+                for tag, declination in word_existed.declination.items():
+                    if tag not in word_existed.declination:
+                        word_existed.declination[tag] = declination
+                await word_existed.save()
+            else:
+                await word.save()
+            for sentence_id in word.sentence_ids:
+                sentence_word = SentenceWord(
+                    sentence_id=sentence_id,
+                    word_id=word.id or word_existed.id,
+                )
+                await sentence_word.save()
+
+    book.sentences_count = await Sentence.count_sentences_for_book(book.id)
+    book.words_count = await Sentence.count_words_for_book(book.id)
+
+    return book
+
+
 async def match_word_definitions(word: str, sentence: str) -> list[str]:
     """
     Find definition for word from sentence
