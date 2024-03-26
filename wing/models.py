@@ -154,7 +154,7 @@ class Sentence(Base):
         """
         Find all sentences contained the word
         """
-        stmt = select(cls).where(cls.sentence.contains(word)).order_by(cls.nr)
+        stmt = select(cls).where(cls.sentence.icontains(word)).order_by(cls.nr)
         if book_id:
             stmt = stmt.where(cls.book_id == book_id)
         async with Session(engine) as s:
@@ -298,6 +298,21 @@ class Flashcard(Base):
             select(Word)
             .join(FlashcardWord)
             .where(FlashcardWord.flashcard_id == self.id)
+        )
+        async with Session(engine) as s:
+            for row in (await s.execute(stmt)).all():
+                yield row[0]
+
+    async def get_sentences(self, book_id) -> AsyncIterable:
+        """
+        Get sentences for book_id related by sentence_flashcard
+        """
+        stmt = (
+            select(Sentence)
+            .join(SentenceFlashcard)
+            .where(SentenceFlashcard.flashcard_id == self.id)
+            .where(Sentence.book_id == book_id)
+            .order_by(Sentence.nr)
         )
         async with Session(engine) as s:
             for row in (await s.execute(stmt)).all():

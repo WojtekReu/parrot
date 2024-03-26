@@ -37,6 +37,15 @@ async def get_sentences(word_id) -> list[dict]:
     return list(books.values())
 
 
+async def get_sentences_by_book(book_id, flashcard_id) -> list[dict]:
+    """
+    For the book and flashcard get sentences.
+    """
+    flashcard = Flashcard(id=flashcard_id)
+    await flashcard.match_first()
+    return [row async for row in flashcard.get_sentences(book_id)]
+
+
 async def get_all_flashcards(book_id) -> list[dict]:
     """
     Get list of flashcard ids
