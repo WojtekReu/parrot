@@ -15,6 +15,10 @@ psycopg2 = "*"
 pytest-asyncio = "*"
 fastapi = "*"
 uvicorn = {extras = ["standard"], version = "*"}
+sqlmodel = "*"
+pydantic = {extras = ["email"], version = "*"}
+email-validator = "*"
+pydantic-settings = "*"
 
 [dev-packages]
 pytest = "*"
