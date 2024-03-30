@@ -1,3 +1,5 @@
+from typing import Sequence
+
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,16 +16,22 @@ async def get_flashcard(session: AsyncSession, flashcard_id: int) -> Flashcard:
     return response.scalar_one_or_none()
 
 
-async def create_flashcard(session: AsyncSession, book: FlashcardCreate) -> Flashcard:
-    db_book = Flashcard(**book.dict())
-    session.add(db_book)
+async def get_flashcards_by_keyword(session: AsyncSession, keyword: str) -> Sequence[Flashcard]:
+    query = select(Flashcard).where(Flashcard.keyword == keyword)
+    response = await session.execute(query)
+    return response.fetchall()
+
+
+async def create_flashcard(session: AsyncSession, flashcard: FlashcardCreate) -> Flashcard:
+    db_flashcard = Flashcard(**flashcard.dict())
+    session.add(db_flashcard)
     try:
         await session.commit()
-        await session.refresh(db_book)
+        await session.refresh(db_flashcard)
     except IntegrityError:
         await session.rollback()
         raise HTTPException(status_code=409, detail="Can't create flashcard")
-    return db_book
+    return db_flashcard
 
 
 async def delete_flashcard(session: AsyncSession, flashcard_id: int) -> int:

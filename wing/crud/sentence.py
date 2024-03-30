@@ -1,4 +1,5 @@
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
@@ -42,3 +43,16 @@ async def delete_sentences_by_book(session: AsyncSession, book_id: int) -> int:
     response = await session.execute(query)
     await session.commit()
     return response.rowcount
+
+async def count_sentences_for_book(session: AsyncSession, book_id) -> int:
+    query = select(func.count()).where(Sentence.book_id == book_id)
+    response = await session.execute(query)
+    return response.scalar_one()
+
+
+async def get_sentences_with_phrase(session: AsyncSession, phrase: str, book_id: [int] = None):
+    query = select(Sentence).where(Sentence.sentence.icontains(phrase)).order_by(Sentence.nr)
+    if book_id:
+        query = query.where(Sentence.book_id == book_id)
+    for row in (await session.execute(query)).all():
+        yield row[0]

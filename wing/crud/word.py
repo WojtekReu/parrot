@@ -1,9 +1,11 @@
 from fastapi import HTTPException
+from sqlalchemy import distinct, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
 from wing.models.flashcard_word import FlashcardWord
+from wing.models.sentence import Sentence
 from wing.models.sentence_word import SentenceWord
 from wing.models.word import Word, WordCreate, WordUpdate
 
@@ -70,3 +72,14 @@ async def delete_word(session: AsyncSession, word_id: int) -> int:
     response = await session.execute(query3)
     await session.commit()
     return response.rowcount
+
+
+async def count_words_for_book(session: AsyncSession, book_id) -> int:
+    query = (
+        select(func.count(distinct(SentenceWord.word_id)))
+        .select_from(Sentence)
+        .join(SentenceWord)
+        .where(Sentence.book_id == book_id)
+    )
+    response = await session.execute(query)
+    return response.scalar_one()

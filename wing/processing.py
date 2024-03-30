@@ -8,21 +8,31 @@ from typing import Optional
 
 import nltk
 import requests
+from sqlalchemy.ext.asyncio import AsyncSession
 from urllib3.exceptions import InsecureRequestWarning
 
-from .logging import write_logs
-from .models import (
-    Book,
-    Flashcard,
-    ParrotSettings,
-    Sentence,
-    Word,
-    SentenceWord,
-    SentenceFlashcard,
-    FlashcardWord,
-    User,
+from .crud.book import get_book, update_book, create_book
+from .crud.flashcard import get_flashcards_by_keyword, create_flashcard
+from .crud.sentence import create_sentence, count_sentences_for_book, get_sentences_with_phrase
+from .crud.user import get_user_by_email
+from .crud.word import (
+    get_word_by_lem_pos,
+    update_word,
+    create_word,
+    update_word_join_to_sentences,
+    count_words_for_book,
 )
+from .logging import write_logs
+from .db.session import get_session
 from .alchemy import API_URL, PONS_SECRET_KEY
+from .models.book import Book, BookCreate
+from .models.flashcard import Flashcard, FlashcardCreate
+from .models.flashcard_word import FlashcardWord
+from .models.sentence import Sentence, SentenceCreate
+from .models.sentence_flashcard import SentenceFlashcard
+from .models.sentence_word import SentenceWord
+from .models.user import User
+from .models.word import Word, WordCreate
 from .structure import (
     ADVERBS,
     DETERMINERS,
@@ -109,39 +119,47 @@ def lemmatize(lemmatizer, source: str) -> str:
     return source
 
 
-def load_translations_cmd(book_id: Optional[int], filename_path: Path) -> None:
+async def load_translations_cmd(book_id: Optional[int], filename_path: Path) -> Book:
     """
     Run asynchronous function which load translations from csv to db
     """
-    asyncio.run(load_translations(book_id, filename_path))
+    book = await get_or_create_book(book_id, filename_path)
+
+    async for session in get_session():
+        pos_collections = await load_translations_content(session, filename_path)
+
+    async for session in get_session():
+        for dest in pos_collections:
+            await save_prepared_words(session, dest)
+    return book
 
 
-async def load_translations(book_id: Optional[int], filename_path: Path) -> None:
+async def get_or_create_book(book_id: Optional[int], filename_path: Path) -> Book:
     """
-    Load csv flashcard file to db for selected book
+    Get book for loading translations
     """
-    user = User(username="jkowalski")
-    await user.match_first()
-
-    if book_id:
-        book = Book(id=book_id)
-        await book.match_first()
-        if book.title:
-            loading_message(book.id, book.title)
+    async for session in get_session():
+        if book_id:
+            book = await get_book(session, book_id)
+            if not book.title:
+                raise ValueError(f"Book not found by id: {book_id}")
         else:
-            book_not_found_message(book_id)
-            return
-    else:
-        title_from_filename = filename_path.name.split(".")[0]
-        book = Book(
-            title=title_from_filename,
-            author="",
-        )
-        await book.match_first()
-        if not book.id:
-            await book.save()
+            title_from_filename = filename_path.name.split(".")[0]
+            book = await create_book(
+                session,
+                BookCreate(
+                    title=title_from_filename,
+                    author="",
+                ),
+            )
             book_created_message(book.id, book.title)
+
         loading_message(book.id, book.title)
+        return book
+
+
+async def load_translations_content(session: AsyncSession, filename_path: Path):
+    user = await get_user_by_email(session, "jkowalski@example.com")
 
     with open(filename_path) as f:
         csv_data = csv.reader(f, delimiter=";")
@@ -151,79 +169,56 @@ async def load_translations(book_id: Optional[int], filename_path: Path) -> None
         adverbs = {}  # r
         adjectives = {}  # a
 
-        for row in csv_data:
-            source_text, translation_str = row[0], row[1]
-            flashcard = Flashcard(
-                user_id=user.id,
-                key_word=source_text,
-            )
-            async for result in flashcard.all():
-                if result.translations == [translation_str]:
-                    flashcard = result
-            if not flashcard.id:
-                flashcard.translations = [translation_str]
-                await flashcard.save()
-
-            sentence_ids = set([s.id async for s in Sentence.get_sentences(source_text)])
+        for source_text, translation_str in csv_data:
+            flashcard = None
+            for result_row in await get_flashcards_by_keyword(session, source_text):
+                if translation_str in result_row[0].translations:
+                    flashcard = result_row[0]
+            if not flashcard:
+                flashcard = await create_flashcard(
+                    session,
+                    FlashcardCreate(
+                        user_id=user.id,
+                        keyword=source_text,
+                        translations=[translation_str],
+                    ),
+                )
+            if source_text.split() == 1:
+                sentence_ids = "          "
+            else:
+                sentence_ids = set(
+                    [s.id async for s in get_sentences_with_phrase(session, source_text)]
+                )
 
             for word_str, tag in nltk.pos_tag(nltk.word_tokenize(source_text)):
                 if tag in ("NN", "NNP", "NNPS", "NNS"):
                     empty = bool(tag in ("NN", "NNP"))
                     pos = nltk.corpus.wordnet.NOUN  # n
                     dest = nouns
-                
+
                 elif tag in ("VB", "VBD", "VBG", "VBN", "VBP", "VBZ"):
                     empty = bool(tag in ("VB", "VBP"))
                     pos = nltk.corpus.wordnet.VERB  # v
                     dest = verbs
-                
+
                 elif tag in ("RB", "RBR", "RBS"):
                     empty = bool(tag == "RB")
                     pos = nltk.corpus.wordnet.ADV  # r
                     dest = adverbs
-                
+
                 elif tag in ("JJ", "JJR", "JJS"):
                     empty = bool(tag == "JJ")
                     pos = nltk.corpus.wordnet.ADJ  # a
                     dest = adjectives
-                
+
                 else:
                     continue
 
-                create_word(sentence_ids, flashcard.id, word_str.lower(), tag, pos, empty, dest)
+                create_word_clone(
+                    sentence_ids, flashcard.id, word_str.lower(), tag, pos, empty, dest
+                )
 
-        for dest in (nouns, verbs, adverbs, adjectives):
-            for lem, word in dest.items():
-                word_existed = await word.match_by_lem_pos()
-                if word_existed:
-                    word_existed.count += 1
-                    for tag, declination in word_existed.declination.items():
-                        if tag not in word_existed.declination:
-                            word_existed.declination[tag] = declination
-                    await word_existed.save()
-                    sentence_ids = word.sentence_ids
-                    flashcard_ids = word.flashcard_ids
-                    word = word_existed
-                else:
-                    await word.save()
-                    sentence_ids = word.sentence_ids
-                    flashcard_ids = word.flashcard_ids
-                for sentence_id in sentence_ids:
-                    for flashcard_id in flashcard_ids:
-                        sentence_flashcard = SentenceFlashcard(
-                            sentence_id=sentence_id,
-                            flashcard_id=flashcard_id,
-                        )
-                    await sentence_flashcard.save()
-
-                for flashcard_id in flashcard_ids:
-                    flashcard_word = FlashcardWord(
-                        word_id=word.id,
-                        flashcard_id=flashcard_id,
-                    )
-                    await flashcard_word.match_first()
-                    if not flashcard_word.id:
-                        await flashcard_word.save()
+    return nouns, verbs, adverbs, adjectives
 
 
 def translate(word: str, log_output) -> list[tuple[str, str]]:
@@ -478,36 +473,42 @@ async def tokenize_book_content(book_id, book_raw) -> None:
         task.cancel()
 
 
-def create_word(
+def create_word_clone(
     sentence_ids: set[int],
     flashcard_id: [int],
     word_str: str,
     tag: str,
     pos: str,
     empty: bool,
-    dest: dict[str, Word],
+    dest: dict[str, dict],
 ) -> None:
     """
     Create Word object and add to dest dict
     """
     lem = nltk.corpus.wordnet.morphy(word_str, pos) if pos else None
-    word = Word(
-        count=1,
-        lem=lem if lem else word_str,
-        pos=pos,
-        declination={} if empty else {tag: word_str},
-    )
-    if word.lem not in dest:
-        word.sentence_ids = sentence_ids
-        word.flashcard_ids = set()
+    if not lem:
+        lem = word_str
+
+    if lem in dest:
+        word_dict = dest[lem]
+        word_dict["count"] += 1
+        word_dict["sentence_ids"].update(sentence_ids)
         if flashcard_id:
-            word.flashcard_ids.add(flashcard_id)
-        dest[word.lem] = word
-    elif tag not in dest[word.lem].declination and not empty:
-        if flashcard_id:
-            dest[word.lem].flashcard_ids.add(flashcard_id)
-        dest[word.lem].sentence_ids.update(sentence_ids)
-        dest[word.lem].declination[tag] = word.declination
+            word_dict["flashcard_ids"].add(flashcard_id)
+        if not empty:
+            word_dict["declination"][tag] = word_str
+
+    else:
+        word_dict = {
+            "count": 1,
+            "lem": lem if lem else word_str,
+            "pos": pos,
+            "declination": {} if empty else {tag: word_str},
+            "sentence_ids": sentence_ids,
+            "flashcard_ids": {flashcard_id} if flashcard_id else set(),  # set
+        }
+        dest[lem] = word_dict
+
 
 async def save_sentence(sentence_nr: ..., book_id: int, sentence_text: str) -> Sentence:
     sentence = Sentence(
@@ -519,52 +520,70 @@ async def save_sentence(sentence_nr: ..., book_id: int, sentence_text: str) -> S
     return sentence
 
 
-async def split_to_sentences(book_raw, book_id) -> Sentence:
+async def split_to_sentences(session: AsyncSession, book_raw: str, book_id: int) -> Sentence:
     sentence_nr = itertools.count()
 
     for sentence_text in nltk.sent_tokenize(book_raw):
         if sentence_text.lower().startswith("chapter "):
             chapter, *rest = sentence_text.split("\n")
+            await create_sentence(
+                session,
+                SentenceCreate(
+                    nr=next(sentence_nr),
+                    book_id=book_id,
+                    sentence=chapter,
+                ),
+            )
             sentence_text = "\n".join(rest)
-            yield await save_sentence(sentence_nr, book_id, chapter)
 
         if not sentence_text:
             continue
 
-        yield await save_sentence(sentence_nr, book_id, sentence_text)
+        sentence = await create_sentence(
+            session,
+            SentenceCreate(
+                nr=next(sentence_nr),
+                book_id=book_id,
+                sentence=sentence_text,
+            ),
+        )
+        yield sentence
 
 
 async def load_book_content_cmd(book_path: Path, book_id: int) -> Book:
     """
     Load book from path, and add book.
     """
-    book = Book(id=book_id)
-    await book.match_first()
+    async for session in get_session():
+        book = await get_book(session, book_id=book_id)
+
     if book.title is None:
         raise ValueError(f"ERROR: Not found book for id = {book_id}.")
 
     book_raw = get_book_content(book_path)
 
-    pos_collections = await load_sentences(book_raw, book_id)
+    pos_collections = await load_sentences(session, book_raw, book_id)
 
     for dest in pos_collections:
-        await save_words(dest)
+        await save_prepared_words(session, dest)
 
-    book.sentences_count = await Sentence.count_sentences_for_book(book.id)
-    book.words_count = await Sentence.count_words_for_book(book.id)
-    await book.save()
+    async for session in get_session():
+        book.sentences_count = await count_sentences_for_book(session, book.id)
+        book.words_count = await count_words_for_book(session, book.id)
+        await update_book(session, book.id, book)
 
     return book
 
 
-async def load_sentences(book_raw: str, book_id: int) -> tuple[dict, dict, dict, dict]:
+async def load_sentences(
+    session: AsyncSession, book_raw: str, book_id: int
+) -> tuple[dict, dict, dict, dict]:
     nouns = {}  # n
     verbs = {}  # v
     adverbs = {}  # r
     adjectives = {}  # a
 
-    async for sentence in split_to_sentences(book_raw, book_id):
-
+    async for sentence in split_to_sentences(session, book_raw, book_id):
         for word_str, tag in nltk.pos_tag(nltk.word_tokenize(sentence.sentence)):
             if tag in ("NN", "NNP", "NNPS", "NNS"):
                 empty = bool(tag in ("NN", "NNP"))
@@ -589,28 +608,31 @@ async def load_sentences(book_raw: str, book_id: int) -> tuple[dict, dict, dict,
             else:
                 continue
 
-            create_word({sentence.id}, None, word_str.lower(), tag, pos, empty, dest)
+            create_word_clone({sentence.id}, None, word_str.lower(), tag, pos, empty, dest)
 
     return nouns, verbs, adverbs, adjectives
 
 
-async def save_words(dest: dict) -> None:
-    for lem, word in dest.items():
-        word_existed = await word.match_by_lem_pos()
-        if word_existed:
-            word_existed.count += 1
-            for tag, declination in word_existed.declination.items():
-                if tag not in word_existed.declination:
-                    word_existed.declination[tag] = declination
-            await word_existed.save()
+async def save_prepared_words(session: AsyncSession, dest: dict) -> None:
+    for lem, word_dict in dest.items():
+        word = await get_word_by_lem_pos(session, lem=word_dict["lem"], pos=word_dict["pos"])
+        if word:
+            word.count += word_dict["count"]
+            word.declination.update(word_dict["declination"])
+            await update_word(session, word.id, word)
         else:
-            await word.save()
-        for sentence_id in word.sentence_ids:
-            sentence_word = SentenceWord(
-                sentence_id=sentence_id,
-                word_id=word.id or word_existed.id,
+            word = await create_word(
+                session,
+                WordCreate(
+                    count=word_dict["count"],
+                    declination=word_dict["declination"],
+                    lem=word_dict["lem"],
+                    pos=word_dict["pos"],
+                ),
             )
-            await sentence_word.save()
+
+        if word_dict["sentence_ids"]:
+            await update_word_join_to_sentences(session, word.id, word_dict["sentence_ids"])
 
 
 async def match_word_definitions(word: str, sentence: str) -> list[str]:

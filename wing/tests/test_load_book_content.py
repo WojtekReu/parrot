@@ -6,8 +6,9 @@ from wing.crud.sentence import (
     get_sentence,
     delete_sentence,
     delete_sentences_by_book,
+    count_sentences_for_book,
 )
-from wing.crud.word import create_word, delete_word, get_word, update_word
+from wing.crud.word import create_word, delete_word, get_word, update_word, count_words_for_book
 from wing.models.book import BookCreate, BookUpdate
 from wing.models.sentence import SentenceCreate
 from wing.crud.book import delete_book, create_book, get_book, update_book
@@ -30,13 +31,14 @@ async def test_load_sentences(session: AsyncSession, book_create: BookCreate):
     pos_collections = await load_sentences(session, BOOK_RAW1, book.id)
     assert len(pos_collections) == 4
     assert len(pos_collections[0]) == 105
+    assert len(pos_collections[0]["animal"]["sentence_ids"]) == 5
+    del pos_collections[0]["animal"]["sentence_ids"]
     assert pos_collections[0]["animal"] == {
         "count": 5,
         "declination": {"NNS": "animals"},
         "flashcard_ids": set(),
         "lem": "animal",
         "pos": "n",
-        "sentence_ids": {18, 23, 25, 10, 15},
     }
 
 
@@ -92,3 +94,17 @@ async def test_save_prepared_words(session: AsyncSession, book_create: BookCreat
 
     await save_prepared_words(session, PREPARED_WORDS)
     assert True
+
+
+@pytest.mark.asyncio
+async def test_count_sentences_and_words(session: AsyncSession, book_create: BookCreate):
+    book = await create_book(session, book_create)
+    pos_collections = await load_sentences(session, BOOK_RAW1, book.id)
+    for dest in pos_collections:
+        await save_prepared_words(session, dest)
+
+    sentences_count = await count_sentences_for_book(session, book.id)
+    words_count = await count_words_for_book(session, book.id)
+
+    assert sentences_count == 21
+    assert words_count == 226

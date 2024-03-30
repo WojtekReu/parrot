@@ -11,9 +11,11 @@ from sqlalchemy.ext.asyncio import (
 from sqlmodel import SQLModel
 
 from wing.models.book import Book, BookCreate
+from wing.models.flashcard import FlashcardCreate
 from wing.models.word import WordCreate
+from wing.models.user import UserCreate
 
-ENGINE_URL = ""
+ENGINE_URL = "postgresql+asyncpg://parrotown:91trembuschety@localhost/parrotdb_test"
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -82,4 +84,21 @@ def word_create():
         lem="test",
         declinations=["tests"],
         definition="test definition",
+    )
+
+
+@pytest.fixture
+def user_create():
+    return UserCreate(
+        username="jkowalski",
+        password="secret-password",
+        email="jkowalski@example.com",
+    )
+
+
+@pytest.fixture
+def flashcard_create():
+    return FlashcardCreate(
+        keyword="popholes",
+        translations=["dziury"],
     )

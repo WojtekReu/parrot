@@ -5,5 +5,5 @@ class Base(SQLModel):
     id: int = Field(
         primary_key=True,
         index=True,
-        nullable=True,
+        nullable=False,
     )

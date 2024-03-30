@@ -1,17 +1,51 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from wing.crud.flashcard import create_flashcard, get_flashcards_by_keyword
 from wing.crud.sentence import (
     create_sentence,
     get_sentence,
     delete_sentence,
     delete_sentences_by_book,
+    get_sentences_with_phrase,
 )
+from wing.crud.user import create_user, get_user, get_user_by_email
 from wing.crud.word import create_word, delete_word, get_word, update_word
 from wing.models.book import BookCreate, BookUpdate
+from wing.models.flashcard import FlashcardCreate
 from wing.models.sentence import SentenceCreate
 from wing.crud.book import delete_book, create_book, get_book, update_book
+from wing.models.user import UserCreate, UserUpdate
 from wing.models.word import WordCreate, WordUpdate
+
+
+@pytest.mark.asyncio
+async def test_create_user(session: AsyncSession, user_create: UserCreate):
+    created_user = await create_user(session, user_create)
+    assert created_user.id is not None
+    assert created_user.username == user_create.username
+
+
+@pytest.mark.asyncio
+async def test_get_user_by_email(session: AsyncSession):
+    created_user = await create_user(
+        session,
+        UserCreate(
+            username="anowak",
+            password="password",
+            email="anowak@example.com",
+        ),
+    )
+    user = await get_user_by_email(session, created_user.email)
+    assert user.id is not None
+    assert user.username == created_user.username
+    assert user.email == created_user.email
+
+
+@pytest.mark.asyncio
+async def test_get_user_by_email_user_not_found(session: AsyncSession):
+    result = await get_user_by_email(session, "zkapusta@example.com")
+    assert result is None
 
 
 @pytest.mark.asyncio
@@ -78,6 +112,30 @@ async def test_get_sentence(session: AsyncSession, book_create: BookCreate):
     )
     received_sentence = await get_sentence(session, created_sentence.id)
     assert received_sentence == created_sentence
+
+
+@pytest.mark.asyncio
+async def test_get_sentences_with_phrase(session: AsyncSession, book_create: BookCreate):
+    created_book = await create_book(session, book_create)
+    sentences = [
+        "Watshon went to home.",
+        "Someone went to home right now.",
+    ]
+    for nr, sentence in enumerate(sentences):
+        await create_sentence(
+            session,
+            SentenceCreate(
+                nr=nr,
+                book_id=created_book.id,
+                sentence=sentence,
+            ),
+        )
+
+    result = []
+    async for sentence in get_sentences_with_phrase(session, "went to home"):
+        result.append(sentence.sentence)
+
+    assert result == sentences
 
 
 @pytest.mark.asyncio
@@ -150,3 +208,36 @@ async def test_delete_word(session: AsyncSession, word_create: WordCreate):
     created_word = await create_word(session, word_create)
     deleted_word = await delete_word(session, word_id=created_word.id)
     assert deleted_word == 1
+
+
+@pytest.mark.asyncio
+async def test_create_flashcard(session: AsyncSession):
+    user = await get_user(session, 1)
+    flashcard = await create_flashcard(
+        session,
+        FlashcardCreate(
+            user_id=user.id,
+            keyword="stirring",
+            translations=["poruszajacy"],
+        ),
+    )
+    assert flashcard.id is not None
+    assert flashcard.keyword == "stirring"
+    assert flashcard.translations == ["poruszajacy"]
+
+
+@pytest.mark.asyncio
+async def test_get_flashcard_by_values(session: AsyncSession):
+    user = await get_user(session, 1)
+    flashcard = await create_flashcard(
+        session,
+        FlashcardCreate(
+            user_id=user.id,
+            keyword="rocket",
+            translations=["rakieta"],
+        ),
+    )
+    translations = []
+    for rf in await get_flashcards_by_keyword(session, keyword=flashcard.keyword):
+        translations.append(rf[0].translations)
+    assert translations == [["rakieta"]]

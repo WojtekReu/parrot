@@ -4,11 +4,10 @@ import csv
 from pathlib import Path
 import typer
 
-from wing.db.session import get_session
-from wing.models.book import BookCreate
-from wing.models.user import UserCreate
 from wing.crud.book import create_book
 from wing.crud.user import create_user, get_user_by_email
+from wing.db.session import get_session
+from wing.models import *
 
 
 async def async_main():
@@ -17,9 +16,9 @@ async def async_main():
     translations.
     """
     async for session in get_session():
-        user = await get_user_by_email(session, "jkowalski@example.com")
-        if not user:
-            await create_user(session, UserCreate(
+        db_user = await get_user_by_email(session, "jkowalski@example.com")
+        if not db_user:
+            await create_user(session, user.UserCreate(
                 username="jkowalski",
                 password="password",
                 email="jkowalski@example.com",
@@ -29,11 +28,11 @@ async def async_main():
 
         with open(bl_path) as f:
             for row in csv.reader(f, delimiter='\t'):
-                book = await create_book(session, BookCreate(
+                db_book = await create_book(session, book.BookCreate(
                     title = row[1],
                     author = row[2],
                 ))
-                print(book)
+                print(db_book)
 
 
 def main():

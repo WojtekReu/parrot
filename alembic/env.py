@@ -4,7 +4,7 @@ from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
-from sqlmodel import SQLModel
+import sqlmodel
 
 from alembic import context
 
@@ -13,6 +13,9 @@ from wing.models.flashcard import Flashcard
 from wing.models.sentence import Sentence
 from wing.models.user import User
 from wing.models.word import Word
+from wing.models.sentence_word import SentenceWord
+from wing.models.sentence_flashcard import SentenceFlashcard
+from wing.models.flashcard_word import FlashcardWord
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -27,7 +30,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = SQLModel.metadata
+target_metadata = sqlmodel.SQLModel.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

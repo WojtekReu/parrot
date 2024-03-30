@@ -1,7 +1,9 @@
 import itertools
 from typing import Any
 
-from .models import Book, Word, Flashcard
+from .models.book import Book
+from .models.word import Word
+from .models.flashcard import Flashcard
 
 
 async def print_all_books() -> None:
