@@ -1,6 +1,5 @@
-from typing import AsyncIterable
-
 from fastapi import HTTPException
+from sqlalchemy import ScalarResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
@@ -14,11 +13,10 @@ async def get_book(session: AsyncSession, book_id: int) -> Book:
     return response.scalar_one_or_none()
 
 
-async def get_books(session: AsyncSession) -> AsyncIterable[Book]:
-    query = select(Book)
+async def get_books(session: AsyncSession) -> ScalarResult:
+    query = select(Book).order_by(Book.id)
     response = await session.execute(query)
-    for row in response.fetchall():
-        yield row[0]
+    return response.scalars()
 
 
 async def create_book(session: AsyncSession, book: BookCreate) -> Book:

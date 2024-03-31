@@ -18,7 +18,7 @@ from wing.crud.word import (
     get_sentence_ids_with_word,
     update_word_join_to_sentences,
 )
-from wing.models.book import BookCreate, BookUpdate
+from wing.models.book import Book, BookCreate, BookUpdate
 from wing.models.flashcard import FlashcardCreate
 from wing.models.sentence import SentenceCreate
 from wing.crud.book import delete_book, create_book, get_book, get_books, update_book
@@ -72,8 +72,10 @@ async def test_get_book(session: AsyncSession, book_create: BookCreate):
 @pytest.mark.asyncio
 async def test_get_books(session: AsyncSession, book_create: BookCreate):
     await create_book(session, book_create)
-    books = [b async for b in get_books(session)]
+    books = [book for book in await get_books(session)]
     assert len(books) == 3
+    assert isinstance(books[0], Book)
+    assert books[2].title == "test book"
 
 
 @pytest.mark.asyncio
@@ -146,14 +148,14 @@ async def test_get_sentences_with_phrase(session: AsyncSession, book_create: Boo
         )
 
     result = []
-    async for sentence in get_sentences_with_phrase(session, "went to home"):
+    for sentence in await get_sentences_with_phrase(session, "went to home"):
         result.append(sentence.sentence)
 
     assert result == sentences
 
 
 @pytest.mark.asyncio
-async def test_get_sentence_ids_with_word(session: AsyncSession, book_create: BookCreate):
+async def test_get_sentences_with_word(session: AsyncSession, book_create: BookCreate):
     created_book = await create_book(session, book_create)
     sentences = [
         "Such is the natural life of a pig.",
@@ -184,9 +186,7 @@ async def test_get_sentence_ids_with_word(session: AsyncSession, book_create: Bo
     )
     await update_word_join_to_sentences(session, word.id, sentence_ids)
 
-    result = []
-    async for sentence_id in get_sentence_ids_with_word(session, "pig"):
-        result.append(sentence_id)
+    result = await get_sentence_ids_with_word(session, "pig")
 
     assert result == sentence_ids
 
@@ -291,6 +291,6 @@ async def test_get_flashcard_by_values(session: AsyncSession):
         ),
     )
     translations = []
-    async for retrieved_flashcard in get_flashcards_by_keyword(session, keyword=flashcard.keyword):
+    for retrieved_flashcard in await get_flashcards_by_keyword(session, keyword=flashcard.keyword):
         translations.append(retrieved_flashcard.translations)
     assert translations == [["rakieta"]]

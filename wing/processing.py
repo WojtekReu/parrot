@@ -177,7 +177,7 @@ async def load_translations_content(session: AsyncSession, translation_rows: Ite
 
     for source_text, translation_str in translation_rows:
         flashcard = None
-        async for retrieved_flashcard in get_flashcards_by_keyword(session, source_text):
+        for retrieved_flashcard in await get_flashcards_by_keyword(session, source_text):
             if translation_str in retrieved_flashcard.translations:
                 flashcard = retrieved_flashcard
         if not flashcard:
@@ -190,12 +190,10 @@ async def load_translations_content(session: AsyncSession, translation_rows: Ite
                 ),
             )
         if source_text.split() == 1:
-            sentence_ids = set(
-                [s.id async for s in get_sentence_ids_with_word(session, source_text)]
-            )
+            sentence_ids = set(await get_sentence_ids_with_word(session, source_text))
         else:
             sentence_ids = set(
-                [s.id async for s in get_sentences_with_phrase(session, source_text)]
+                [s.id for s in await get_sentences_with_phrase(session, source_text)]
             )
 
         for word_str, tag in nltk.pos_tag(nltk.word_tokenize(source_text)):

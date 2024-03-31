@@ -85,7 +85,7 @@ async def count_words_for_book(session: AsyncSession, book_id) -> int:
     return response.scalar_one()
 
 
-async def get_sentence_ids_with_word(session: AsyncSession, word_text: str):
+async def get_sentence_ids_with_word(session: AsyncSession, word_text: str) -> list[int]:
     query = (
         select(SentenceWord)
         .select_from(SentenceWord)
@@ -93,5 +93,5 @@ async def get_sentence_ids_with_word(session: AsyncSession, word_text: str):
         .where(Word.lem == word_text)
         .order_by(SentenceWord.id)
     )
-    for row in (await session.execute(query)).all():
-        yield row[0].sentence_id
+    response = await session.execute(query)
+    return [sentence_word.sentence_id for sentence_word in response.scalars()]

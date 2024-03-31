@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import func
+from sqlalchemy import func, ScalarResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
@@ -15,16 +15,30 @@ async def get_sentence(session: AsyncSession, sentence_id: int) -> Sentence:
     return response.scalar_one_or_none()
 
 
-async def create_sentence(session: AsyncSession, book: SentenceCreate) -> Sentence:
-    db_book = Sentence(**book.dict())
-    session.add(db_book)
+async def get_sentences_for_flashcard(
+    session: AsyncSession, book_id: int, flashcard_id: int
+) -> ScalarResult[Sentence]:
+    query = (
+        select(Sentence)
+        .join(SentenceFlashcard)
+        .where(SentenceFlashcard.flashcard_id == flashcard_id)
+        .where(Sentence.book_id == book_id)
+        .order_by(Sentence.nr)
+    )
+    response = await session.execute(query)
+    return response.scalars()
+
+
+async def create_sentence(session: AsyncSession, sentence_create: SentenceCreate) -> Sentence:
+    sentence = Sentence(**sentence_create.dict())
+    session.add(sentence)
     try:
         await session.commit()
-        await session.refresh(db_book)
+        await session.refresh(sentence)
     except IntegrityError:
         await session.rollback()
         raise HTTPException(status_code=409, detail="Can't create sentence")
-    return db_book
+    return sentence
 
 
 async def delete_sentence(session: AsyncSession, sentence_id: int) -> int:
@@ -44,15 +58,18 @@ async def delete_sentences_by_book(session: AsyncSession, book_id: int) -> int:
     await session.commit()
     return response.rowcount
 
-async def count_sentences_for_book(session: AsyncSession, book_id) -> int:
+
+async def count_sentences_for_book(session: AsyncSession, book_id: int) -> int:
     query = select(func.count()).where(Sentence.book_id == book_id)
     response = await session.execute(query)
     return response.scalar_one()
 
 
-async def get_sentences_with_phrase(session: AsyncSession, phrase: str, book_id: [int] = None):
+async def get_sentences_with_phrase(
+    session: AsyncSession, phrase: str, book_id: [int] = None
+) -> ScalarResult[Sentence]:
     query = select(Sentence).where(Sentence.sentence.icontains(phrase)).order_by(Sentence.nr)
     if book_id:
         query = query.where(Sentence.book_id == book_id)
-    for row in (await session.execute(query)).all():
-        yield row[0]
+    response = await session.execute(query)
+    return response.scalars()
