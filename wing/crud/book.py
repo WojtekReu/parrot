@@ -1,3 +1,5 @@
+from typing import AsyncIterable
+
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +12,13 @@ async def get_book(session: AsyncSession, book_id: int) -> Book:
     query = select(Book).where(Book.id == book_id)
     response = await session.execute(query)
     return response.scalar_one_or_none()
+
+
+async def get_books(session: AsyncSession) -> AsyncIterable[Book]:
+    query = select(Book)
+    response = await session.execute(query)
+    for row in response.fetchall():
+        yield row[0]
 
 
 async def create_book(session: AsyncSession, book: BookCreate) -> Book:

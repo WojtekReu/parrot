@@ -1,40 +1,34 @@
-import nltk
 import pytest
 
-from wing.processing import lemmatize, match_word_definitions
+from sqlalchemy.ext.asyncio import AsyncSession
 
-pytest_plugins = ("pytest_asyncio",)
+from wing.processing import load_translations_content
 
-
-@pytest.mark.skip(reason="It's not finished yet.")
-def test_load_needless():
-    """
-    Problem is that words `needless` and `needle` have the same lemma - `needle`.
-    """
-    input_word = "needless"
-    translation = "nieproduktywny"
-
-    lemmatizer = nltk.WordNetLemmatizer()
-    actual = lemmatize(lemmatizer, input_word)
-
-    # lemmatizer.lemmatize('needless', pos='n')  # needle
-    # lemmatizer.lemmatize('needless', pos='v')  # needle
-    # lemmatizer.lemmatize('needless', pos='s')  # needless
-    # lemmatizer.lemmatize('needlessly', pos='r')  # needless
-
-    # I expect `needless` has lemma `needless`
-
-    assert actual == input_word
+TRANSLATION_LIST = [
+    ("pig", "świnia"),
+    ("world", "świat"),
+]
 
 
 @pytest.mark.asyncio
-async def test_match_word_definition():
-    """
-    Test matching word definition
-    """
-    input_word = "needless"
-    sentence = "O cruel, needless misunderstanding!"
-
-    definitions = await match_word_definitions(input_word, sentence)
-
-    assert definitions == ["gratuitous.s.03: unnecessary and unwarranted"]
+async def test_load_translations(session: AsyncSession):
+    pos_collections = await load_translations_content(session, TRANSLATION_LIST)
+    result = {
+        "pig": {
+            "count": 1,
+            "declination": {},
+            "flashcard_ids": {3},
+            "lem": "pig",
+            "pos": "n",
+            "sentence_ids": {5, 6, 7, 44, 46, 47, 19, 21, 22},
+        },
+        "world": {
+            "count": 1,
+            "declination": {},
+            "flashcard_ids": {4},
+            "lem": "world",
+            "pos": "n",
+            "sentence_ids": set(),
+        },
+    }
+    assert pos_collections[0] == result  # 0 is nouns

@@ -1,7 +1,8 @@
 import itertools
 from typing import Any
 
-from .models.book import Book
+from .crud.book import get_books
+from .db.session import get_session
 from .models.word import Word
 from .models.flashcard import Flashcard
 
@@ -10,8 +11,9 @@ async def print_all_books() -> None:
     """
     Print id, title and author for all books.
     """
-    async for book in Book.all():
-        print(f"{book.id}. {book.title} - {book.author}")
+    async for session in get_session():
+        async for book in get_books(session):
+            print(f"{book.id}. {book.title} - {book.author}")
 
 
 def show_correct_translation(flashcard: Any) -> None:

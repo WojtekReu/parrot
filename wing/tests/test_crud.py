@@ -10,11 +10,18 @@ from wing.crud.sentence import (
     get_sentences_with_phrase,
 )
 from wing.crud.user import create_user, get_user, get_user_by_email
-from wing.crud.word import create_word, delete_word, get_word, update_word
+from wing.crud.word import (
+    create_word,
+    delete_word,
+    get_word,
+    update_word,
+    get_sentence_ids_with_word,
+    update_word_join_to_sentences,
+)
 from wing.models.book import BookCreate, BookUpdate
 from wing.models.flashcard import FlashcardCreate
 from wing.models.sentence import SentenceCreate
-from wing.crud.book import delete_book, create_book, get_book, update_book
+from wing.crud.book import delete_book, create_book, get_book, get_books, update_book
 from wing.models.user import UserCreate, UserUpdate
 from wing.models.word import WordCreate, WordUpdate
 
@@ -60,6 +67,13 @@ async def test_get_book(session: AsyncSession, book_create: BookCreate):
     created_book = await create_book(session, book_create)
     received_book = await get_book(session, created_book.id)
     assert received_book == created_book
+
+
+@pytest.mark.asyncio
+async def test_get_books(session: AsyncSession, book_create: BookCreate):
+    await create_book(session, book_create)
+    books = [b async for b in get_books(session)]
+    assert len(books) == 3
 
 
 @pytest.mark.asyncio
@@ -136,6 +150,45 @@ async def test_get_sentences_with_phrase(session: AsyncSession, book_create: Boo
         result.append(sentence.sentence)
 
     assert result == sentences
+
+
+@pytest.mark.asyncio
+async def test_get_sentence_ids_with_word(session: AsyncSession, book_create: BookCreate):
+    created_book = await create_book(session, book_create)
+    sentences = [
+        "Such is the natural life of a pig.",
+        "The four young pigs raised their voices timidly.",
+        "The pigs did not actually work.",
+    ]
+    sentence_ids = []
+    for nr, sentence_text in enumerate(sentences):
+        sentence = await create_sentence(
+            session,
+            SentenceCreate(
+                nr=nr,
+                book_id=created_book.id,
+                sentence=sentence_text,
+            ),
+        )
+        sentence_ids.append(sentence.id)
+
+    word = await create_word(
+        session,
+        WordCreate(
+            count=3,
+            pos="n",
+            lem="pig",
+            declinations=["pigs"],
+            definition="very smart animal",
+        ),
+    )
+    await update_word_join_to_sentences(session, word.id, sentence_ids)
+
+    result = []
+    async for sentence_id in get_sentence_ids_with_word(session, "pig"):
+        result.append(sentence_id)
+
+    assert result == sentence_ids
 
 
 @pytest.mark.asyncio
@@ -238,6 +291,6 @@ async def test_get_flashcard_by_values(session: AsyncSession):
         ),
     )
     translations = []
-    for rf in await get_flashcards_by_keyword(session, keyword=flashcard.keyword):
-        translations.append(rf[0].translations)
+    async for retrieved_flashcard in get_flashcards_by_keyword(session, keyword=flashcard.keyword):
+        translations.append(retrieved_flashcard.translations)
     assert translations == [["rakieta"]]

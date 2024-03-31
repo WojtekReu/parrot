@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import AsyncIterable
 
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -16,10 +16,13 @@ async def get_flashcard(session: AsyncSession, flashcard_id: int) -> Flashcard:
     return response.scalar_one_or_none()
 
 
-async def get_flashcards_by_keyword(session: AsyncSession, keyword: str) -> Sequence[Flashcard]:
+async def get_flashcards_by_keyword(
+    session: AsyncSession, keyword: str
+) -> AsyncIterable[Flashcard]:
     query = select(Flashcard).where(Flashcard.keyword == keyword)
     response = await session.execute(query)
-    return response.fetchall()
+    for row in response.fetchall():
+        yield row[0]
 
 
 async def create_flashcard(session: AsyncSession, flashcard: FlashcardCreate) -> Flashcard:

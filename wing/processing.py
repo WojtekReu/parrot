@@ -4,7 +4,7 @@ import itertools
 import json
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Iterable
 
 import nltk
 import requests
@@ -21,6 +21,7 @@ from .crud.word import (
     create_word,
     update_word_join_to_sentences,
     count_words_for_book,
+    get_sentence_ids_with_word,
 )
 from .logging import write_logs
 from .db.session import get_session
@@ -77,6 +78,13 @@ def get_book_content(book_path: Path) -> str:
         book_content = f.read()
     return book_content
 
+def get_translations_content(translations_path: Path) -> list:
+    """
+    Read csv file and return list with translations
+    """
+    with open(translations_path) as f:
+        return [row for row in csv.reader(f, delimiter=";")]
+
 
 def filter_source(words: list) -> tuple[list, str] | None:
     """
@@ -124,9 +132,10 @@ async def load_translations_cmd(book_id: Optional[int], filename_path: Path) -> 
     Run asynchronous function which load translations from csv to db
     """
     book = await get_or_create_book(book_id, filename_path)
+    translations_list = get_translations_content(filename_path)
 
     async for session in get_session():
-        pos_collections = await load_translations_content(session, filename_path)
+        pos_collections = await load_translations_content(session, translations_list)
 
     async for session in get_session():
         for dest in pos_collections:
@@ -136,7 +145,7 @@ async def load_translations_cmd(book_id: Optional[int], filename_path: Path) -> 
 
 async def get_or_create_book(book_id: Optional[int], filename_path: Path) -> Book:
     """
-    Get book for loading translations
+    Get book for loading translations or create new book based on filename.
     """
     async for session in get_session():
         if book_id:
@@ -158,65 +167,64 @@ async def get_or_create_book(book_id: Optional[int], filename_path: Path) -> Boo
         return book
 
 
-async def load_translations_content(session: AsyncSession, filename_path: Path):
+async def load_translations_content(session: AsyncSession, translation_rows: Iterable):
     user = await get_user_by_email(session, "jkowalski@example.com")
 
-    with open(filename_path) as f:
-        csv_data = csv.reader(f, delimiter=";")
+    nouns = {}  # n
+    verbs = {}  # v
+    adverbs = {}  # r
+    adjectives = {}  # a
 
-        nouns = {}  # n
-        verbs = {}  # v
-        adverbs = {}  # r
-        adjectives = {}  # a
+    for source_text, translation_str in translation_rows:
+        flashcard = None
+        async for retrieved_flashcard in get_flashcards_by_keyword(session, source_text):
+            if translation_str in retrieved_flashcard.translations:
+                flashcard = retrieved_flashcard
+        if not flashcard:
+            flashcard = await create_flashcard(
+                session,
+                FlashcardCreate(
+                    user_id=user.id,
+                    keyword=source_text,
+                    translations=[translation_str],
+                ),
+            )
+        if source_text.split() == 1:
+            sentence_ids = set(
+                [s.id async for s in get_sentence_ids_with_word(session, source_text)]
+            )
+        else:
+            sentence_ids = set(
+                [s.id async for s in get_sentences_with_phrase(session, source_text)]
+            )
 
-        for source_text, translation_str in csv_data:
-            flashcard = None
-            for result_row in await get_flashcards_by_keyword(session, source_text):
-                if translation_str in result_row[0].translations:
-                    flashcard = result_row[0]
-            if not flashcard:
-                flashcard = await create_flashcard(
-                    session,
-                    FlashcardCreate(
-                        user_id=user.id,
-                        keyword=source_text,
-                        translations=[translation_str],
-                    ),
-                )
-            if source_text.split() == 1:
-                sentence_ids = "          "
+        for word_str, tag in nltk.pos_tag(nltk.word_tokenize(source_text)):
+            if tag in ("NN", "NNP", "NNPS", "NNS"):
+                empty = bool(tag in ("NN", "NNP"))
+                pos = nltk.corpus.wordnet.NOUN  # n
+                dest = nouns
+
+            elif tag in ("VB", "VBD", "VBG", "VBN", "VBP", "VBZ"):
+                empty = bool(tag in ("VB", "VBP"))
+                pos = nltk.corpus.wordnet.VERB  # v
+                dest = verbs
+
+            elif tag in ("RB", "RBR", "RBS"):
+                empty = bool(tag == "RB")
+                pos = nltk.corpus.wordnet.ADV  # r
+                dest = adverbs
+
+            elif tag in ("JJ", "JJR", "JJS"):
+                empty = bool(tag == "JJ")
+                pos = nltk.corpus.wordnet.ADJ  # a
+                dest = adjectives
+
             else:
-                sentence_ids = set(
-                    [s.id async for s in get_sentences_with_phrase(session, source_text)]
-                )
+                continue
 
-            for word_str, tag in nltk.pos_tag(nltk.word_tokenize(source_text)):
-                if tag in ("NN", "NNP", "NNPS", "NNS"):
-                    empty = bool(tag in ("NN", "NNP"))
-                    pos = nltk.corpus.wordnet.NOUN  # n
-                    dest = nouns
-
-                elif tag in ("VB", "VBD", "VBG", "VBN", "VBP", "VBZ"):
-                    empty = bool(tag in ("VB", "VBP"))
-                    pos = nltk.corpus.wordnet.VERB  # v
-                    dest = verbs
-
-                elif tag in ("RB", "RBR", "RBS"):
-                    empty = bool(tag == "RB")
-                    pos = nltk.corpus.wordnet.ADV  # r
-                    dest = adverbs
-
-                elif tag in ("JJ", "JJR", "JJS"):
-                    empty = bool(tag == "JJ")
-                    pos = nltk.corpus.wordnet.ADJ  # a
-                    dest = adjectives
-
-                else:
-                    continue
-
-                create_word_clone(
-                    sentence_ids, flashcard.id, word_str.lower(), tag, pos, empty, dest
-                )
+            create_word_clone(
+                sentence_ids, flashcard.id, word_str.lower(), tag, pos, empty, dest
+            )
 
     return nouns, verbs, adverbs, adjectives
 
@@ -296,181 +304,6 @@ def cut_html(source: str) -> str:
     """
     source = re.sub(r" <span .*>.*</span>", "", source)
     return re.sub(r"<.*?>", "", source)
-
-
-async def save_bwords_to_db(words, status) -> None:
-    while True:
-        if status["r"]:
-            for lem, word in words.items():
-                if word.update_later:
-                    await word.save()
-            return
-        else:
-            await asyncio.sleep(0.1)
-
-
-async def put_sentences(book_raw, sentences: asyncio.Queue, status):
-    for sentence in nltk.sent_tokenize(book_raw):
-        await sentences.put(sentence)
-    status["s"] = True
-
-
-async def task_add_sentence_book_content(
-    book_id, sentence_nr, sentences: asyncio.Queue, book_contents, status
-):
-    while True:
-        try:
-            sentence_text = sentences.get_nowait()
-            if not sentence_text:
-                return
-
-            if sentence_text.lower().startswith("chapter "):
-                sentence = Sentence(
-                    nr=next(sentence_nr),
-                    book_id=book_id,
-                    sentence=sentence_text.split("\n")[0],
-                )
-                await sentence.save()
-                sentence_text = "\n".join(sentence_text.split("\n")[1:])
-
-            sentence = Sentence(
-                nr=next(sentence_nr),
-                book_id=book_id,
-                sentence=sentence_text,
-            )
-            await sentence.save()
-            await book_contents.put(sentence)
-            sentences.task_done()
-        except asyncio.QueueEmpty:
-            # await sentences.join()
-            if status["s"]:
-                await sentences.join()
-                status["w"] = True
-                return
-            await asyncio.sleep(0.1)
-
-
-async def task_split_to_words(book_contents, lemmatizer, words_dict, relations, status):
-    stopwords = set(nltk.corpus.stopwords.words("english"))
-    while True:
-        try:
-            sentence = book_contents.get_nowait()
-            # run task
-            words_set = set()
-            for word_str in nltk.word_tokenize(sentence.sentence):
-                if not word_str.isalpha():
-                    continue
-
-                word_str = word_str.lower()
-                lem = lemmatizer.lemmatize(word_str)
-                if len(lem) < MIN_LEM_WORD or lem in stopwords:
-                    continue
-
-                if lem in words_dict:
-                    word_object = words_dict[lem]
-                    word_object.count += 1
-                    if word_str not in word_object.declination:
-                        word_object.declination.append(word_str)
-                    word_object.update_later = True
-                else:
-                    word_object = Word(
-                        lem=lem,
-                    )
-                    await word_object.match_first()
-                    if word_object.id:
-                        word_object.count += 1
-                        if word_str not in word_object.declination:
-                            word_object.declination.append(word_str)
-                        word_object.update_later = True
-                    else:
-                        word_object = Word(
-                            lem=lem,
-                            declination=[word_str],
-                            count=1,
-                        )
-                        word_object.update_later = False
-                        await word_object.save()
-                    words_dict[lem] = word_object
-
-                if word_object.count < MAX_STEM_OCCURRENCE:
-                    words_set.add(word_object)
-
-            for word2 in words_set:
-                await relations.put((sentence, word2))
-
-            book_contents.task_done()
-        except asyncio.QueueEmpty:
-            # await book_contents.join()
-            if status["w"]:
-                await book_contents.join()
-                status["r"] = True
-                return
-            await asyncio.sleep(0.1)
-
-
-async def task_join_word_to_sentence(relations, status):
-    while True:
-        try:
-            sentence, word = relations.get_nowait()
-            sentence_word = SentenceWord(
-                sentence_id=sentence.id,
-                word_id=word.id,
-            )
-            await sentence_word.save()
-            relations.task_done()
-        except asyncio.QueueEmpty:
-            # await relations.join()
-            if status["r"]:
-                await relations.join()
-                return
-            await asyncio.sleep(0.1)
-
-
-async def process_sentences(sentences, tasks, book_id, sentence_nr, book_contents, status):
-    task = asyncio.create_task(
-        task_add_sentence_book_content(book_id, sentence_nr, sentences, book_contents, status),
-        name=f"Task add_sentence {book_id}",
-    )
-    tasks.append(task)
-
-
-async def process_words(book_contents, lemmatizer, words, relations, tasks, status):
-    task = asyncio.create_task(
-        task_split_to_words(book_contents, lemmatizer, words, relations, status),
-        name=f"Task split to words",
-    )
-    tasks.append(task)
-
-
-async def process_word_sentence_relation(relations, tasks, status):
-    task = asyncio.create_task(
-        task_join_word_to_sentence(relations, status), name=f"join word to sentence"
-    )
-    tasks.append(task)
-
-
-async def tokenize_book_content(book_id, book_raw) -> None:
-    sentences = asyncio.Queue(1000)
-    book_contents = asyncio.Queue(1500)
-    words: dict[str, Word] = {}
-    relations = asyncio.Queue(2000)
-    lemmatizer = nltk.WordNetLemmatizer()
-    sentence_nr = itertools.count()
-
-    tasks = []
-    status = {"s": False, "w": False, "r": False, "x": False}
-    await asyncio.gather(
-        put_sentences(book_raw, sentences, status),
-        process_sentences(sentences, tasks, book_id, sentence_nr, book_contents, status),
-        process_words(book_contents, lemmatizer, words, relations, tasks, status),
-        process_word_sentence_relation(relations, tasks, status),
-        return_exceptions=True,
-    )
-
-    await save_bwords_to_db(words, status)
-
-    for task in tasks:
-        task.cancel()
 
 
 def create_word_clone(
