@@ -12,14 +12,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from urllib3.exceptions import InsecureRequestWarning
 
 from .crud.book import get_book, update_book, create_book
-from .crud.flashcard import get_flashcards_by_keyword, create_flashcard
+from .crud.flashcard import get_flashcards_by_keyword, create_flashcard, \
+    flashcard_join_to_sentences
 from .crud.sentence import create_sentence, count_sentences_for_book, get_sentences_with_phrase
 from .crud.user import get_user_by_email
 from .crud.word import (
     get_word_by_lem_pos,
     update_word,
     create_word,
-    update_word_join_to_sentences,
+    word_join_to_sentences,
     count_words_for_book,
     get_sentence_ids_with_word,
 )
@@ -463,7 +464,10 @@ async def save_prepared_words(session: AsyncSession, dest: dict) -> None:
             )
 
         if word_dict["sentence_ids"]:
-            await update_word_join_to_sentences(session, word.id, word_dict["sentence_ids"])
+            await word_join_to_sentences(session, word.id, word_dict["sentence_ids"])
+        if word_dict["flashcard_ids"]:
+            for flashcard_id in word_dict["flashcard_ids"]:
+                await flashcard_join_to_sentences(session, flashcard_id, word_dict["sentence_ids"])
 
 
 async def match_word_definitions(word: str, sentence: str) -> list[str]:

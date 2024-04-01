@@ -1,7 +1,11 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from wing.crud.flashcard import create_flashcard, get_flashcards_by_keyword
+from wing.crud.flashcard import (
+    create_flashcard,
+    get_flashcards_by_keyword,
+    flashcard_join_to_sentences,
+)
 from wing.crud.sentence import (
     create_sentence,
     get_sentence,
@@ -16,7 +20,7 @@ from wing.crud.word import (
     get_word,
     update_word,
     get_sentence_ids_with_word,
-    update_word_join_to_sentences,
+    word_join_to_sentences,
 )
 from wing.models.book import Book, BookCreate, BookUpdate
 from wing.models.flashcard import FlashcardCreate
@@ -155,6 +159,36 @@ async def test_get_sentences_with_phrase(session: AsyncSession, book_create: Boo
 
 
 @pytest.mark.asyncio
+async def test_flashcard_join_to_sentece(session: AsyncSession, book_create: BookCreate):
+    created_book = await create_book(session, book_create)
+    sentences = [
+        "The two horses had just lain down when a brood of ducklings",
+        "She had protected the lost brood of ducklings.",
+    ]
+    sentence_ids = set()
+    for nr, sentence_text in enumerate(sentences):
+        sentence = await create_sentence(
+            session,
+            SentenceCreate(
+                nr=nr,
+                book_id=created_book.id,
+                sentence=sentence_text,
+            ),
+        )
+        sentence_ids.add(sentence.id)
+
+    flashcard = await create_flashcard(
+        session,
+        FlashcardCreate(
+            user_id=1,
+            keyword="brood of ducklings",
+            translations=["potomstwo kaczątek"],
+        ),
+    )
+    await flashcard_join_to_sentences(session, flashcard.id, sentence_ids)
+
+
+@pytest.mark.asyncio
 async def test_get_sentences_with_word(session: AsyncSession, book_create: BookCreate):
     created_book = await create_book(session, book_create)
     sentences = [
@@ -184,7 +218,7 @@ async def test_get_sentences_with_word(session: AsyncSession, book_create: BookC
             definition="very smart animal",
         ),
     )
-    await update_word_join_to_sentences(session, word.id, sentence_ids)
+    await word_join_to_sentences(session, word.id, sentence_ids)
 
     result = await get_sentence_ids_with_word(session, "pig")
 

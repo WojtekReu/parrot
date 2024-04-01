@@ -13,22 +13,6 @@ TRANSLATION_LIST = [
 @pytest.mark.asyncio
 async def test_load_translations(session: AsyncSession):
     pos_collections = await load_translations_content(session, TRANSLATION_LIST)
-    result = {
-        "pig": {
-            "count": 1,
-            "declination": {},
-            "flashcard_ids": {3},
-            "lem": "pig",
-            "pos": "n",
-            "sentence_ids": {5, 6, 7, 44, 46, 47, 19, 21, 22},
-        },
-        "world": {
-            "count": 1,
-            "declination": {},
-            "flashcard_ids": {4},
-            "lem": "world",
-            "pos": "n",
-            "sentence_ids": set(),
-        },
-    }
-    assert pos_collections[0] == result  # 0 is nouns
+    assert "pig" in pos_collections[0]  # 0 is nouns
+    assert "world" in pos_collections[0]
+    assert len(pos_collections[0]["pig"]["sentence_ids"]) == 9

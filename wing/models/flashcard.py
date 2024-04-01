@@ -8,7 +8,7 @@ from .user import User
 class FlashcardBase(SQLModel):
     user_id: int = Field(foreign_key="user.id")
     keyword: str = Field(nullable=False)
-    translations: list = Field(default=[], sa_column=Column(JSON))
+    translations: list = Field(default_factory=list, sa_column=Column(JSON))
 
 
 class FlashcardCreate(FlashcardBase):

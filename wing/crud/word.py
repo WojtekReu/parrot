@@ -51,15 +51,21 @@ async def update_word(session: AsyncSession, word_id: int, word: WordUpdate) -> 
     return db_word
 
 
-async def update_word_join_to_sentences(
+async def word_join_to_sentences(
     session: AsyncSession, word_id: int, sentence_ids: set
 ) -> None:
     for sentence_id in sentence_ids:
-        sentence_word = SentenceWord(
-            word_id=word_id,
-            sentence_id=sentence_id,
+        result = await session.execute(
+            select(SentenceWord)
+            .where(SentenceWord.word_id == word_id)
+            .where(SentenceWord.sentence_id == sentence_id)
         )
-        session.add(sentence_word)
+        if not result.first():
+            sentence_word = SentenceWord(
+                word_id=word_id,
+                sentence_id=sentence_id,
+            )
+            session.add(sentence_word)
     await session.commit()
 
 

@@ -8,7 +8,7 @@ class WordBase(SQLModel):
     count: int = Field(default=0, nullable=False)
     pos: str = Field(default=None, nullable=True)
     lem: str = Field(nullable=False)
-    declination: dict = Field(default={}, sa_column=Column(JSON))
+    declination: dict = Field(default_factory=dict, sa_column=Column(JSON))
     definition: str = Field(nullable=True)
 
 
