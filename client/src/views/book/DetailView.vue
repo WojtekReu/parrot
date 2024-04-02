@@ -25,10 +25,10 @@
                 <p class="correct" v-if="flashcard.translations.includes(yourAnswer)">
                     {{ source }} -> {{ yourAnswer }}
                 </p>
-            </div>
-            <div v-else>
-                <div class="incorrect">{{ yourAnswer }}</div>
-                <div v-for="translation in flashcard.translations">{{ translation }}</div>
+                <div v-else>
+                    <div class="incorrect">{{ yourAnswer }}</div>
+                    <div v-for="translation in flashcard.translations">{{ translation }}</div>
+                </div>
             </div>
         </div>
     </div>
