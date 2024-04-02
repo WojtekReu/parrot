@@ -17,17 +17,17 @@
                     </li>
                 </ol>
             </div>
-            <p><span class="description">Przetłumacz:</span> {{ flashcard.key_word }}</p>
+            <p><span class="description">Przetłumacz:</span> {{ flashcard.keyword }}</p>
             <p>
                 <input type="text" v-focus v-model="typedText" @keypress="ready">
             </p>
-        </div>
-        <div v-if="yourAnswer">
-            <p class="correct" v-if="flashcard.translations.includes(yourAnswer)">
-                {{ source }} -> {{ yourAnswer }}
-            </p>
+            <div v-if="yourAnswer">
+                <p class="correct" v-if="flashcard.translations.includes(yourAnswer)">
+                    {{ source }} -> {{ yourAnswer }}
+                </p>
+            </div>
             <div v-else>
-                <p class="incorrect">{{ yourAnswer }}</p>
+                <div class="incorrect">{{ yourAnswer }}</div>
                 <div v-for="translation in flashcard.translations">{{ translation }}</div>
             </div>
         </div>
@@ -72,11 +72,11 @@ export default {
         async fetchData() {
             this.status = null
             if (this.flashcardNr) {
-                let fValues = this.flashcards[this.flashcardNr]
+                let flashcardId = this.flashcards[this.flashcardNr]
                 this.error2 = null
                 try {
                     let response = await fetch(
-                        `http://localhost:8000/flashcard/${fValues.flashcard_id}`
+                        `http://localhost:8000/api/v1/flashcard/${flashcardId}`
                     )
                     if (!response.ok) {
                         throw Error('ERROR: API result error for flashcard request')
@@ -84,18 +84,13 @@ export default {
                     this.flashcard = await response.json()
                     if (this.flashcard) {
                         this.sentences = []
-                        for (const sentence_id of fValues.sentence_ids) {
-                            response = await fetch(
-                                `http://localhost:8000/sentence/${sentence_id}`
-                            )
-                            if (!response.ok) {
-                                throw Error('ERROR: API result error for sentece request')
-                            }
-                            let res = await response.json()
-                            if (res.nr !== 0) {
-                                this.sentences.push(res)
-                            }
+                        response = await fetch(
+                            `http://localhost:8000/api/v1/sentence/book/${this.book.id}/${flashcardId}`
+                        )
+                        if (!response.ok) {
+                            throw Error('ERROR: API result error for sentence request')
                         }
+                        this.sentences = await response.json()
                     }
                     this.status = 'ready'
                 } catch (err) {
@@ -105,7 +100,7 @@ export default {
         },
         ready(keyboardEvent) {
             if (keyboardEvent.key === 'Enter') {
-                this.source = this.flashcard.key_word
+                this.source = this.flashcard.keyword
                 this.rightAnswer = this.flashcard.translations
                 this.yourAnswer = this.typedText
                 if (this.yourAnswer === '') {

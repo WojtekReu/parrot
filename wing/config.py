@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     ASYNC_POSTGRES_URI: PostgresDsn | None = None
 
 
-def assemble_db_connection(v: str | None, values: dict[str, Any]) -> Any:
+def assemble_db_connection(v: str | None = None, values: dict[str, Any] = None) -> Any:
     if isinstance(v, str):
         return v
 
@@ -32,4 +32,4 @@ def assemble_db_connection(v: str | None, values: dict[str, Any]) -> Any:
 
 
 settings = Settings()
-settings.ASYNC_POSTGRES_URI = assemble_db_connection(v=None, values=settings.__dict__)
+settings.ASYNC_POSTGRES_URI = assemble_db_connection(values=settings.dict())

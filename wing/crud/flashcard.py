@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy import ScalarResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import delete, select
+from sqlmodel import delete, select, distinct
 
 from wing.models.flashcard import Flashcard, FlashcardCreate
 from wing.models.flashcard_word import FlashcardWord
@@ -26,16 +26,15 @@ async def get_flashcard_ids_for_book(
     session: AsyncSession, book_id: int, user_id: int
 ) -> list[int]:
     query = (
-        select(SentenceFlashcard)
+        select(distinct(SentenceFlashcard.flashcard_id))
+        .select_from(SentenceFlashcard)
         .join(Sentence)
         .join(Flashcard)
-        .add_columns(Sentence.nr)
         .where(Flashcard.user_id == user_id)
         .where(Sentence.book_id == book_id)
-        .order_by(Sentence.nr, Flashcard.id)
     )
     response = await session.execute(query)
-    return [sf.flashcard_id for sf in response.scalars()]
+    return [sf for sf in response.scalars()]
 
 
 async def create_flashcard(session: AsyncSession, flashcard: FlashcardCreate) -> Flashcard:

@@ -190,7 +190,7 @@ async def load_translations_content(session: AsyncSession, translation_rows: Ite
                     translations=[translation_str],
                 ),
             )
-        if source_text.split() == 1:
+        if len(source_text.split()) == 1:
             sentence_ids = set(await get_sentence_ids_with_word(session, source_text))
         else:
             sentence_ids = set(
