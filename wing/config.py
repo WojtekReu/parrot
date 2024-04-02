@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     POSTGRES_ECHO: bool = Field(False, env="POSTGRES_ECHO")
     POSTGRES_POOL_SIZE: int = Field(10, env="POSTGRES_POOL_SIZE")
     ASYNC_POSTGRES_URI: PostgresDsn | None = None
+    # configs for external tools:
+    # Url to pons dictionary API
+    API_URL: str = Field("https://api.pons.com/v1/dictionary", env="API_URL")
+    # To obtain access to PONS API go to https://en.pons.com/p/online-dictionary/developers/api
+    # register using your name and email. Then get key from
+    # https://en.pons.com/open_dict/public_api/secret
+    # Secret key for PONS dictionary
+    PONS_SECRET_KEY: str = Field("", env="PONS_SECRET_KEY")
 
 
 def assemble_db_connection(v: str | None = None, values: dict[str, Any] = None) -> Any:

@@ -1,8 +1,6 @@
 import asyncio
 import csv
 import itertools
-import json
-import re
 from pathlib import Path
 from typing import Optional, Iterable
 
@@ -12,8 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from urllib3.exceptions import InsecureRequestWarning
 
 from .crud.book import get_book, update_book, create_book
-from .crud.flashcard import get_flashcards_by_keyword, create_flashcard, \
-    flashcard_join_to_sentences
+from .crud.flashcard import (
+    get_flashcards_by_keyword,
+    create_flashcard,
+    flashcard_join_to_sentences,
+)
 from .crud.sentence import create_sentence, count_sentences_for_book, get_sentences_with_phrase
 from .crud.user import get_user_by_email
 from .crud.word import (
@@ -24,9 +25,7 @@ from .crud.word import (
     count_words_for_book,
     get_sentence_ids_with_word,
 )
-from .logging import write_logs
 from .db.session import get_session
-from .alchemy import API_URL, PONS_SECRET_KEY
 from .models.book import Book, BookCreate
 from .models.flashcard import Flashcard, FlashcardCreate
 from .models.flashcard_word import FlashcardWord
@@ -36,16 +35,9 @@ from .models.sentence_word import SentenceWord
 from .models.user import User
 from .models.word import Word, WordCreate
 from .structure import (
-    ADVERBS,
     DETERMINERS,
-    MIN_LEM_WORD,
-    MAX_STEM_OCCURRENCE,
-    PREPOSITIONS,
     PRONOUNS,
-    SENTENCES_LIMIT,
     tag_to_pos,
-    TYPE_SENTENCE,
-    TYPE_WORD,
 )
 from .messages import book_created_message, book_not_found_message, loading_message
 
@@ -226,83 +218,6 @@ async def load_translations_content(session: AsyncSession, translation_rows: Ite
             )
 
     return nouns, verbs, adverbs, adjectives
-
-
-def translate(word: str, log_output) -> list[tuple[str, str]]:
-    """
-    Translate word using dictionary API
-    """
-    headers = {
-        "X-Secret": PONS_SECRET_KEY,
-    }
-    lang = "enpl"
-    url = f"{API_URL}?l={lang}&q={word}"
-    response = requests.get(
-        url=url,
-        headers=headers,
-        verify=False,
-    )
-
-    if response.status_code == 204:
-        print(f"{url = }")
-        print("Response status: 204 No content")
-        return []
-
-    elif response.status_code == 403:
-        print(f"{url = }")
-        print("Response status: 404 - Forbidden")
-        return []
-
-    elif response.status_code == 504:
-        print(f"{url = }")
-        print("Response status: 504 - server has problem. Try later.")
-        if log_output and response.text:
-            logs = {
-                "url": url,
-                "response": response.text,
-            }
-            write_logs(logs)
-        return []
-
-    elif response.status_code != 200:
-        print(f"{url = }")
-        print(f"Response status: {response.status_code}")
-        if log_output and response.text:
-            logs = {
-                "url": url,
-                "response": response.text,
-            }
-            write_logs(logs)
-        return []
-    try:
-        response_json = json.loads(response.content)
-        if log_output and response_json:
-            write_logs(response_json[0])
-
-    except TypeError:
-        print(response.raw)
-        raise TypeError(response.raw)
-
-    translations = []
-    for row in response_json:
-        for hit in row["hits"]:
-            for rom in hit["roms"]:
-                for arab in rom["arabs"]:
-                    for translation in arab["translations"]:
-                        source = cut_html(translation["source"])
-                        target = cut_html(translation["target"])
-                        translations.append((source, target))
-
-    return translations
-
-
-def cut_html(source: str) -> str:
-    """
-    Dictionary API return word and some description in 'span' tags. Remove span content. For tag
-    'strong' remove tag with attributes but leave his content.
-    """
-    source = re.sub(r" <span .*>.*</span>", "", source)
-    return re.sub(r"<.*?>", "", source)
 
 
 def create_word_clone(
