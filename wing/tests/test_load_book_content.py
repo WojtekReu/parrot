@@ -1,3 +1,5 @@
+from typing import Coroutine
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,8 +19,8 @@ At one end of the big barn, on a sort of raised platform, Major was already ensc
 
 
 @pytest.mark.asyncio
-async def test_load_sentences(session: AsyncSession, book_create: BookCreate):
-    book = await create_book(session, book_create)
+async def test_load_sentences(session: AsyncSession, book_coroutine: Coroutine):
+    book = await book_coroutine
     pos_collections = await load_sentences(session, BOOK_RAW1, book.id)
     assert len(pos_collections) == 4
     assert len(pos_collections[0]) == 105
@@ -70,8 +72,8 @@ PREPARED_WORDS = {
 
 
 @pytest.mark.asyncio
-async def test_save_prepared_words(session: AsyncSession, book_create: BookCreate):
-    book = await create_book(session, book_create)
+async def test_save_prepared_words(session: AsyncSession, book_coroutine: Coroutine):
+    book = await book_coroutine
     for lem, values in PREPARED_WORDS.items():
         sentence = await create_sentence(
             session,
@@ -88,8 +90,11 @@ async def test_save_prepared_words(session: AsyncSession, book_create: BookCreat
 
 
 @pytest.mark.asyncio
-async def test_count_sentences_and_words(session: AsyncSession, book_create: BookCreate):
-    book = await create_book(session, book_create)
+async def test_count_sentences_and_words(session: AsyncSession):
+    book = await create_book(session, BookCreate(
+        title="Animal Farm",
+        author="Eric Arthur Blair",
+    ))
     pos_collections = await load_sentences(session, BOOK_RAW1, book.id)
     for dest in pos_collections:
         await save_prepared_words(session, dest)

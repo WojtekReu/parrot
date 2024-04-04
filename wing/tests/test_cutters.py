@@ -1,6 +1,6 @@
 import pytest
 
-from ..processing import cut_html
+from ..tools_external import cut_html
 
 
 def test_cut_html():

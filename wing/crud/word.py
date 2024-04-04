@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import distinct, func
+from sqlalchemy import distinct, func, ScalarResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
@@ -7,7 +7,7 @@ from sqlmodel import delete, select
 from wing.models.flashcard_word import FlashcardWord
 from wing.models.sentence import Sentence
 from wing.models.sentence_word import SentenceWord
-from wing.models.word import Word, WordCreate, WordUpdate
+from wing.models.word import Word, WordCreate, WordUpdate, WordFind
 
 
 async def get_word(session: AsyncSession, word_id: int) -> Word:
@@ -16,10 +16,12 @@ async def get_word(session: AsyncSession, word_id: int) -> Word:
     return response.scalar_one_or_none()
 
 
-async def get_word_by_lem_pos(session: AsyncSession, lem: str, pos: str) -> Word:
-    query = select(Word).where(Word.lem == lem).where(Word.pos == pos)
+async def find_words(session: AsyncSession, word: WordFind) -> ScalarResult[Word]:
+    query = select(Word).order_by(Word.id)
+    for column_name, value in word.dict(exclude_unset=True).items():
+        query = query.where(getattr(Word, column_name) == value)
     response = await session.execute(query)
-    return response.scalar_one_or_none()
+    return response.scalars()
 
 
 async def create_word(session: AsyncSession, word: WordCreate) -> Word:

@@ -14,16 +14,22 @@ from .crud.flashcard import (
     get_flashcards_by_keyword,
     create_flashcard,
     flashcard_join_to_sentences,
+    flashcard_join_to_word,
 )
-from .crud.sentence import create_sentence, count_sentences_for_book, get_sentences_with_phrase
+from .crud.sentence import (
+    create_sentence,
+    count_sentences_for_book,
+    get_sentences_with_phrase,
+    get_sentence_ids,
+)
 from .crud.user import get_user_by_email
 from .crud.word import (
-    get_word_by_lem_pos,
     update_word,
     create_word,
     word_join_to_sentences,
     count_words_for_book,
     get_sentence_ids_with_word,
+    find_words,
 )
 from .db.session import get_session
 from .models.book import Book, BookCreate
@@ -33,13 +39,13 @@ from .models.sentence import Sentence, SentenceCreate
 from .models.sentence_flashcard import SentenceFlashcard
 from .models.sentence_word import SentenceWord
 from .models.user import User
-from .models.word import Word, WordCreate
+from .models.word import Word, WordCreate, WordFind
 from .structure import (
     DETERMINERS,
     PRONOUNS,
-    tag_to_pos,
 )
 from .messages import book_created_message, book_not_found_message, loading_message
+from .tools import tag_to_pos
 
 # Suppress only the single warning from urllib3 needed.
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
@@ -52,7 +58,7 @@ def get_pattern(word: str) -> str:
     return r'([^.?!"]*\s' + word + r'[^.?!"]*[.?!]?)|(^' + word + r'[^.?!"]*[.?!]?)'
 
 
-async def find_word(word_str: str) -> Word:
+async def find_word_old(word_str: str) -> Word:
     """
     Find word in db
     """
@@ -70,6 +76,7 @@ def get_book_content(book_path: Path) -> str:
     with open(book_path) as f:
         book_content = f.read()
     return book_content
+
 
 def get_translations_content(translations_path: Path) -> list:
     """
@@ -128,11 +135,9 @@ async def load_translations_cmd(book_id: Optional[int], filename_path: Path) -> 
     translations_list = get_translations_content(filename_path)
 
     async for session in get_session():
-        pos_collections = await load_translations_content(session, translations_list)
+        user = await get_user_by_email(session, "jkowalski@example.com")
+        await load_translations_content(session, translations_list, book.id, user.id)
 
-    async for session in get_session():
-        for dest in pos_collections:
-            await save_prepared_words(session, dest)
     return book
 
 
@@ -160,64 +165,61 @@ async def get_or_create_book(book_id: Optional[int], filename_path: Path) -> Boo
         return book
 
 
-async def load_translations_content(session: AsyncSession, translation_rows: Iterable):
-    user = await get_user_by_email(session, "jkowalski@example.com")
-
-    nouns = {}  # n
-    verbs = {}  # v
-    adverbs = {}  # r
-    adjectives = {}  # a
-
+async def load_translations_content(
+    session: AsyncSession,
+    translation_rows: Iterable,
+    book_id: int,
+    user_id: int,
+):
+    wnl = nltk.stem.WordNetLemmatizer()
     for source_text, translation_str in translation_rows:
         flashcard = None
         for retrieved_flashcard in await get_flashcards_by_keyword(session, source_text):
             if translation_str in retrieved_flashcard.translations:
+                # I assume flashcard with other translation has other meaning, and has to be
+                # created a new flashcard
                 flashcard = retrieved_flashcard
         if not flashcard:
             flashcard = await create_flashcard(
                 session,
                 FlashcardCreate(
-                    user_id=user.id,
+                    user_id=user_id,
                     keyword=source_text,
                     translations=[translation_str],
                 ),
             )
-        if len(source_text.split()) == 1:
-            sentence_ids = set(await get_sentence_ids_with_word(session, source_text))
+        source_tokenized = nltk.pos_tag(nltk.word_tokenize(source_text))
+        if len(source_tokenized) == 1:
+            words = {}
+            for word in await find_words(session, WordFind(lem=source_text)):
+                words[word.id] = await get_sentence_ids(session, word, book_id)
+            if words:
+                word_id = max(words, key=lambda x: len(words[x]))
+                if words[word_id] != 0:
+                    await flashcard_join_to_word(session, flashcard.id, {word_id})
+                    await flashcard_join_to_sentences(session, flashcard.id, set(words[word_id]))
+                else:
+                    # think, what to do when there is no the word in this book
+                    pass
         else:
             sentence_ids = set(
                 [s.id for s in await get_sentences_with_phrase(session, source_text)]
             )
+            if sentence_ids:
+                await flashcard_join_to_sentences(session, flashcard.id, sentence_ids)
+            word_ids = set()
+            for word_str, tag in source_tokenized:
+                pos = tag_to_pos(tag)
+                word = None
+                if tag in ("NN", "VB", "JJ", "RB"):
+                    word = (await find_words(session, WordFind(lem=word_str, pos=pos))).first()
+                elif pos:
+                    word_lem = wnl.lemmatize(word_str, pos)
+                    word = (await find_words(session, WordFind(lem=word_lem, pos=pos))).first()
+                if word:
+                    word_ids.add(word.id)
 
-        for word_str, tag in nltk.pos_tag(nltk.word_tokenize(source_text)):
-            if tag in ("NN", "NNP", "NNPS", "NNS"):
-                empty = bool(tag in ("NN", "NNP"))
-                pos = nltk.corpus.wordnet.NOUN  # n
-                dest = nouns
-
-            elif tag in ("VB", "VBD", "VBG", "VBN", "VBP", "VBZ"):
-                empty = bool(tag in ("VB", "VBP"))
-                pos = nltk.corpus.wordnet.VERB  # v
-                dest = verbs
-
-            elif tag in ("RB", "RBR", "RBS"):
-                empty = bool(tag == "RB")
-                pos = nltk.corpus.wordnet.ADV  # r
-                dest = adverbs
-
-            elif tag in ("JJ", "JJR", "JJS"):
-                empty = bool(tag == "JJ")
-                pos = nltk.corpus.wordnet.ADJ  # a
-                dest = adjectives
-
-            else:
-                continue
-
-            create_word_clone(
-                sentence_ids, flashcard.id, word_str.lower(), tag, pos, empty, dest
-            )
-
-    return nouns, verbs, adverbs, adjectives
+            await flashcard_join_to_word(session, flashcard.id, word_ids)
 
 
 def create_word_clone(
@@ -362,7 +364,8 @@ async def load_sentences(
 
 async def save_prepared_words(session: AsyncSession, dest: dict) -> None:
     for lem, word_dict in dest.items():
-        word = await get_word_by_lem_pos(session, lem=word_dict["lem"], pos=word_dict["pos"])
+        words = await find_words(session, WordFind(lem=word_dict["lem"], pos=word_dict["pos"]))
+        word = words.first()
         if word:
             word.count += word_dict["count"]
             word.declination.update(word_dict["declination"])

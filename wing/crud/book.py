@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
-from wing.models.book import Book, BookCreate, BookUpdate
+from wing.models.book import Book, BookCreate, BookFind, BookUpdate
 
 
 async def get_book(session: AsyncSession, book_id: int) -> Book:
@@ -13,8 +13,10 @@ async def get_book(session: AsyncSession, book_id: int) -> Book:
     return response.scalar_one_or_none()
 
 
-async def get_books(session: AsyncSession) -> ScalarResult:
+async def find_books(session: AsyncSession, book: BookFind) -> ScalarResult:
     query = select(Book).order_by(Book.id)
+    for column_name, value in book.dict(exclude_unset=True).items():
+        query = query.where(getattr(Book, column_name) == value)
     response = await session.execute(query)
     return response.scalars()
 

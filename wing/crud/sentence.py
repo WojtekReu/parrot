@@ -2,11 +2,12 @@ from fastapi import HTTPException
 from sqlalchemy import func, ScalarResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import delete, select
+from sqlmodel import delete, select, distinct
 
 from wing.models.sentence import Sentence, SentenceCreate
 from wing.models.sentence_word import SentenceWord
 from wing.models.sentence_flashcard import SentenceFlashcard
+from wing.models.word import Word
 
 
 async def get_sentence(session: AsyncSession, sentence_id: int) -> Sentence:
@@ -27,6 +28,17 @@ async def get_sentences_for_flashcard(
     )
     response = await session.execute(query)
     return response.scalars()
+
+async def get_sentence_ids(session: AsyncSession, word: Word, book_id: int) -> list[int]:
+    query = (
+        select(distinct(SentenceWord.sentence_id))
+        .select_from(SentenceWord)
+        .join(Sentence)
+        .where(Sentence.book_id == book_id)
+        .where(SentenceWord.word_id == word.id)
+    )
+    response = await session.execute(query)
+    return [sentence_id for sentence_id in response.scalars()]
 
 
 async def create_sentence(session: AsyncSession, sentence_create: SentenceCreate) -> Sentence:

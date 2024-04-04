@@ -10,12 +10,16 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlmodel import SQLModel
 
-from wing.models.book import Book, BookCreate
-from wing.models.flashcard import FlashcardCreate
-from wing.models.word import WordCreate
+from wing.config import settings, assemble_db_connection
+from wing.crud.book import create_book, find_books
+from wing.crud.user import create_user, get_user_by_email
+from wing.crud.word import create_word, find_words
+from wing.models.book import Book, BookCreate, BookFind
+from wing.models.word import WordCreate, WordFind
 from wing.models.user import UserCreate
 
-ENGINE_URL = "postgresql+asyncpg://parrotown:91trembuschety@localhost/parrotdb_test"
+settings.POSTGRES_DBNAME = "parrotdb_test"
+ENGINE_URL = str(assemble_db_connection(values=settings.dict()))
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -69,36 +73,46 @@ def book():
 
 
 @pytest.fixture
-def book_create():
-    return BookCreate(
-        title="test book",
-        author="test author",
+async def book_coroutine(session):
+    book_find = BookFind(
+        title="The Voyage Out",
+        author="Virginia Woolf",
     )
+    books = await find_books(session, book_find)
+    book = books.first()
+    if book:
+        return book
+
+    return await create_book(session, BookCreate(**book_find.dict(exclude_unset=True)))
 
 
 @pytest.fixture
-def word_create():
-    return WordCreate(
-        count=0,
+async def word_coroutine(session):
+    word_find = WordFind(
         pos="n",
         lem="test",
         declinations=["tests"],
         definition="test definition",
     )
+    words = await find_words(session, word_find)
+    word = words.first()
+    if word:
+        return word
+
+    return await create_word(session, WordCreate(**word_find.dict(exclude_unset=True)))
 
 
 @pytest.fixture
-def user_create():
-    return UserCreate(
-        username="jkowalski",
-        password="secret-password",
-        email="jkowalski@example.com",
-    )
+async def user_coroutine(session):
+    user = await get_user_by_email(session, "jkowalski@example.com")
+    if user:
+        return user
 
-
-@pytest.fixture
-def flashcard_create():
-    return FlashcardCreate(
-        keyword="popholes",
-        translations=["dziury"],
+    return await create_user(
+        session,
+        UserCreate(
+            username="jkowalski",
+            password="secret-password",
+            email="jkowalski@example.com",
+        ),
     )

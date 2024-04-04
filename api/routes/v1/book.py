@@ -1,9 +1,9 @@
-from fastapi import APIRouter, status, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from wing.crud.book import create_book, get_book, get_books
+from wing.crud.book import create_book, find_books, get_book
 from wing.db.session import get_session
-from wing.models.book import BookCreate, Book
+from wing.models.book import Book, BookCreate, BookFind
 
 router = APIRouter(
     prefix="/book",
@@ -31,7 +31,7 @@ async def create_book_route(
     response_model=list[Book],
 )
 async def get_books_route(db: AsyncSession = Depends(get_session)):
-    return await get_books(session=db)
+    return await find_books(session=db, book=BookFind())
 
 
 @router.get(

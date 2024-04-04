@@ -67,6 +67,24 @@ async def flashcard_join_to_sentences(
     await session.commit()
 
 
+async def flashcard_join_to_word(
+    session: AsyncSession, flashcard_id: int, word_ids: set
+) -> None:
+    for word_id in word_ids:
+        result = await session.execute(
+            select(FlashcardWord)
+            .where(FlashcardWord.flashcard_id == flashcard_id)
+            .where(FlashcardWord.word_id == word_id)
+        )
+        if not result.first():
+            flashcard_word = FlashcardWord(
+                flashcard_id=flashcard_id,
+                word_id=word_id,
+            )
+            session.add(flashcard_word)
+    await session.commit()
+
+
 async def delete_flashcard(session: AsyncSession, flashcard_id: int) -> int:
     query1 = delete(FlashcardWord).where(FlashcardWord.flashcard_id == flashcard_id)
     query2 = delete(SentenceFlashcard).where(SentenceFlashcard.flashcard_id == flashcard_id)

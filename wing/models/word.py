@@ -27,6 +27,13 @@ class WordUpdate(WordBase):
     definition: str | None = None
 
 
+class WordFind(WordBase):
+    pos: str = None
+    lem: str = None
+    declination: dict = {}
+    definition: str = None
+
+
 class Word(Base, WordBase, table=True):
     __tablename__ = "word"
 

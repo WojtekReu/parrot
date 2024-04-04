@@ -15,7 +15,7 @@ def cut_html(source: str) -> str:
     return re.sub(r"<.*?>", "", source)
 
 
-def translate(api_url: str, headers: dict, log_output) -> list[tuple[str, str]]:
+def translate(api_url: str, headers: dict, log_output: bool) -> list[tuple[str, str]]:
     """
     Translate word using dictionary API
     """

@@ -19,6 +19,11 @@ class BookUpdate(BookBase):
     ...
 
 
+class BookFind(BookBase):
+    title: str | None = None
+    author: str | None = None
+
+
 class Book(Base, BookBase, table=True):
     __tablename__ = "book"
 

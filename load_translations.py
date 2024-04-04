@@ -8,7 +8,7 @@ from pathlib import Path
 import typer
 
 from wing.processing import load_translations_cmd
-from wing.views import print_all_books
+from wing.console_output import print_all_books
 
 
 def main(
