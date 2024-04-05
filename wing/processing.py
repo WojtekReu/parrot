@@ -44,7 +44,7 @@ from .structure import (
     DETERMINERS,
     PRONOUNS,
 )
-from .messages import book_created_message, book_not_found_message, loading_message
+from .messages import book_created_message, loading_message
 from .tools import tag_to_pos
 
 # Suppress only the single warning from urllib3 needed.
@@ -56,17 +56,6 @@ def get_pattern(word: str) -> str:
     Pattern to find sentences with this word in book
     """
     return r'([^.?!"]*\s' + word + r'[^.?!"]*[.?!]?)|(^' + word + r'[^.?!"]*[.?!]?)'
-
-
-async def find_word_old(word_str: str) -> Word:
-    """
-    Find word in db
-    """
-    lemmatizer = nltk.WordNetLemmatizer()
-    lem = lemmatizer.lemmatize(word_str)
-    word = Word(lem=lem)
-    await word.match_first()
-    return word
 
 
 def get_book_content(book_path: Path) -> str:
@@ -386,19 +375,3 @@ async def save_prepared_words(session: AsyncSession, dest: dict) -> None:
         if word_dict["flashcard_ids"]:
             for flashcard_id in word_dict["flashcard_ids"]:
                 await flashcard_join_to_sentences(session, flashcard_id, word_dict["sentence_ids"])
-
-
-async def match_word_definitions(word: str, sentence: str) -> list[str]:
-    """
-    Find definition for word from sentence
-    """
-    word_list = nltk.word_tokenize(sentence)
-    tags = nltk.pos_tag(word_list)
-    tags = [t[1] for t in tags if t[0] == word]
-    tag = tags[0] if tags else None
-    pos = tag_to_pos(tag)
-    definitions = []
-    for synset in nltk.corpus.wordnet.synsets(word, pos=pos):
-        definition = f"{synset.name()}: {synset.definition()}"
-        definitions.append(definition)
-    return definitions

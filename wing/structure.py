@@ -1,3 +1,5 @@
+from pathlib import Path
+
 TYPE_WORD = "W"
 TYPE_SENTENCE = "S"
 
@@ -6,6 +8,11 @@ DEFAULT_LINE_NR = 0
 
 SENTENCES_LIMIT = 10
 DETERMINERS = "the", "a", "an"
+
+NLTK_DATA_PREFIX = Path("/usr/local/share/nltk_data")
+PRONOUNS_FILE = NLTK_DATA_PREFIX.joinpath("corpora", "dolch", "pronouns")
+with open(PRONOUNS_FILE) as f:
+    PRONOUNS = (pronoun for pronoun in f.read().split())
 
 MIN_LEM_WORD = 3
 MAX_STEM_OCCURRENCE = 100
