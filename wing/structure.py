@@ -1,5 +1,3 @@
-from wing.alchemy import ADVERBS_FILE, PREPOSITIONS_FILE, PRONOUNS_FILE
-
 TYPE_WORD = "W"
 TYPE_SENTENCE = "S"
 
@@ -11,15 +9,6 @@ DETERMINERS = "the", "a", "an"
 
 MIN_LEM_WORD = 3
 MAX_STEM_OCCURRENCE = 100
-
-with open(ADVERBS_FILE) as f:
-    ADVERBS = (adverbs for adverbs in f.read().split())
-
-with open(PRONOUNS_FILE) as f:
-    PRONOUNS = (pronoun for pronoun in f.read().split())
-
-with open(PREPOSITIONS_FILE) as f:
-    PREPOSITIONS = (preposition for preposition in f.read().split())
 
 
 def tag_to_pos(tag):

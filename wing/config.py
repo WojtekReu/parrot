@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     # https://en.pons.com/open_dict/public_api/secret
     # Secret key for PONS dictionary
     PONS_SECRET_KEY: str = Field("", env="PONS_SECRET_KEY")
+    API_LOGS_PATH: str = Field("pons_api.log", env="API_LOGS_PATH")
 
 
 def assemble_db_connection(v: str | None = None, values: dict[str, Any] = None) -> Any:

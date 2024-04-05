@@ -1,8 +1,8 @@
 import json
 
-from wing.alchemy import API_LOGS_PATH
+from wing.config import settings
 
 
 def write_logs(response_dict: dict):
-    with open(API_LOGS_PATH, 'ta') as f:
+    with open(settings.API_LOGS_PATH, 'ta') as f:
         f.write(f"{json.dumps(response_dict)}\n")

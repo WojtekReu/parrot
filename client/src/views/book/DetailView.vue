@@ -1,9 +1,9 @@
 <template>
     <div v-if="error">{{ error }}</div>
     <div v-if="book">
-        <h1>{{ book.title }} - {{ book.author }}</h1>
+        <h3>{{ book.title }} - {{ book.author }}</h3>
     </div>
-    <p>nr: <input type="text" class="flashcardNr" v-model="flashcardNr"></p>
+    <p>flashcard nr: <input type="text" class="flashcardNr" v-model="flashcardNr"><input type="button" @click="getNextTranslation" value="Next"></p>
     <div v-if="flashcardNr">
         <div v-if="error2">{{ error2 }}</div>
         <div v-else-if="!status">Loading...</div>
@@ -12,14 +12,13 @@
             <div v-if="sentences">
                 <ol class="sentences">
                     <li v-for="sentence in sentences" :key="id">
-                        (nr: {{ sentence.nr }}) -
                         {{ sentence.sentence }}
                     </li>
                 </ol>
             </div>
-            <p><span class="description">Przetłumacz:</span> {{ flashcard.keyword }}</p>
+            <p><span class="description">EN:</span> {{ flashcard.keyword }}</p>
             <p>
-                <input type="text" v-focus v-model="typedText" @keypress="ready">
+                PL: <input type="text" v-focus v-model="typedText" @keypress="ready">
             </p>
             <div v-if="yourAnswer">
                 <p class="correct" v-if="flashcard.translations.includes(yourAnswer)">
@@ -71,6 +70,7 @@ export default {
     methods: {
         async fetchData() {
             this.status = null
+            this.yourAnswer = ''
             if (this.flashcardNr) {
                 let flashcardId = this.flashcards[this.flashcardNr]
                 this.error2 = null
