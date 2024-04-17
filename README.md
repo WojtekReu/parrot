@@ -9,6 +9,16 @@ Run pipenv to install necessary packages:
 
     pipenv sync
 
+Run install.py to install packages: dolch, punkt, averaged_perceptron_tagger, wordnet.
+
+    ./install.py
+
+Create database, database user and copy alembic.example.ini to alembic.ini and configure it.
+Don't forget to set database configuration.
+
+    cp alembic.example.ini alembic.ini
+    vim alembic.ini
+
 Run alembic migrations:
 
     alembic upgrade head
@@ -24,18 +34,16 @@ and load to database:
 
     ./load_book_content.py Ernest_Hemingway/The_Old_man_and_the_Sea.txt
 
-Load your translations to database:
-
-    ./load_translations.py translations/Ernest_Hemingway/The_Old_man_and_the_Sea.csv
-
-
 The best way to prepare sentences list is using google translator and "saved":
 * translate using https://translate.google.com/?sl=en&tl=pl&op=translate
 * save translations
 * export translations to docs.google.com
 * import as csv separated by `;`
 * load to db using script
- `./load_translations.py translations/Ernest_Hemingway/The_Old_man_and_the_Sea.csv`
+
+Load your translations to database:
+
+    ./load_translations.py translations/Ernest_Hemingway/The_Old_man_and_the_Sea.csv
 
 Run FastAPI service:
 
