@@ -2,7 +2,7 @@ import asyncio
 import csv
 import itertools
 from pathlib import Path
-from typing import Optional, Iterable
+from typing import Optional, Iterable, AsyncIterable
 
 import nltk
 import requests
@@ -258,7 +258,9 @@ async def save_sentence(sentence_nr: ..., book_id: int, sentence_text: str) -> S
     return sentence
 
 
-async def split_to_sentences(session: AsyncSession, book_raw: str, book_id: int) -> Sentence:
+async def split_to_sentences(
+    session: AsyncSession, book_raw: str, book_id: int
+) -> AsyncIterable[Sentence]:
     sentence_nr = itertools.count()
 
     for sentence_text in nltk.sent_tokenize(book_raw):

@@ -4,7 +4,7 @@ Run downloader for nltk and install packages: dolch, punkt, averaged_perceptron_
 """
 
 import nltk
-nltk.download('dolch')
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
-nltk.download('wordnet')
+nltk.download('dolch')  # Dolch word list
+nltk.download('punkt')  # Punkt Tokenizer Models
+nltk.download('averaged_perceptron_tagger')  # Averaged Perceptron Tagger
+nltk.download('wordnet')  # A Lexical Database for English
