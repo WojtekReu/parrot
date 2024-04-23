@@ -19,6 +19,7 @@ sqlmodel = "*"
 pydantic = {extras = ["email"], version = "*"}
 email-validator = "*"
 pydantic-settings = "*"
+httpx = "*"
 
 [dev-packages]
 pytest = "*"

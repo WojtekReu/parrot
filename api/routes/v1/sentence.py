@@ -16,7 +16,7 @@ router = APIRouter(
 )
 
 
-@router.post(
+@router.put(
     "/",
     summary="Create a new sentence.",
     status_code=status.HTTP_201_CREATED,

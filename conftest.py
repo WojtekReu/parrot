@@ -1,5 +1,6 @@
 import asyncio
 
+from httpx import AsyncClient
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import (
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlmodel import SQLModel
 
+from api.server import app
 from wing.config import settings, assemble_db_connection
 from wing.crud.book import create_book, find_books
 from wing.crud.user import create_user, get_user_by_email
@@ -17,6 +19,7 @@ from wing.crud.word import create_word, find_words
 from wing.models.book import Book, BookCreate, BookFind
 from wing.models.word import WordCreate, WordFind
 from wing.models.user import UserCreate
+from wing.db.session import get_session
 
 settings.POSTGRES_DBNAME = "parrotdb_test"
 ENGINE_URL = str(assemble_db_connection(values=settings.dict()))
@@ -116,3 +119,13 @@ async def user_coroutine(session):
             email="jkowalski@example.com",
         ),
     )
+
+
+class BaseTestRouter:
+    @pytest_asyncio.fixture(scope="function")
+    async def client(self, session):
+        app_tested = app
+        app_tested.include_router(self.router)
+        app_tested.dependency_overrides[get_session] = lambda: session
+        async with AsyncClient(app=app_tested, base_url="http://test") as c:
+            yield c
