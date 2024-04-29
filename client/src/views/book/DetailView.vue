@@ -3,9 +3,14 @@
     <div v-if="book">
         <h3>{{ book.title }} - {{ book.author }}</h3>
     </div>
-    <p>flashcard nr: <input type="text" class="flashcardNr" v-model="flashcardNr"><input type="button" @click="getNextTranslation" value="Next"></p>
+    <p>
+        flashcard nr: 
+        <input type="text" class="flashcardNr" v-model="flashcardNr" @keypress="getNextFlashcard">
+        <input type="hidden" v-model="flashcardNrHidden">
+        <input type="button" @click="getNextTranslation" value="Next">
+    </p>
     <div>Your results: <span class="correct">{{ correctResults }}</span> / {{ totalResults }}</div>
-    <div v-if="flashcardNr" class="flashcard">
+    <div v-if="flashcardNrHidden" class="flashcard">
         <div v-if="error"></div>
         <div v-else-if="!status">Loading...</div>
         <div v-else>
@@ -63,6 +68,7 @@ export default {
             totalResults: 0,
             status: null,
             flashcardNr: '',
+            flashcardNrHidden: '',
             flashcard: null,
             typedText: '',
             yourAnswer: '',
@@ -76,8 +82,8 @@ export default {
             this.status = null
             this.yourAnswer = ''
             let flashcardId = ''
-            if (this.flashcardNr) {
-                flashcardId = this.flashcards[this.flashcardNr]
+            if (this.flashcardNrHidden) {
+                flashcardId = this.flashcards[this.flashcardNrHidden]
             }
             if (flashcardId !== '' && flashcardId) {
                 this.error = null
@@ -124,15 +130,21 @@ export default {
                 this.yourAnswer = ''
             }
         },
+        getNextFlashcard(keyboardEvent) {
+            if (keyboardEvent.key === 'Enter') {
+                this.flashcardNrHidden = this.flashcardNr
+            }
+        },
         getNextTranslation() {
             this.flashcardNr ++
+            this.flashcardNrHidden = this.flashcardNr
         }
     },
     mounted() {
         this.fetchData()
     },
     watch: {
-        flashcardNr() {
+        flashcardNrHidden() {
             this.fetchData()
         }
     }
