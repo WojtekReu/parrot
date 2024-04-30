@@ -7,6 +7,7 @@ from wing.crud.flashcard import (
     create_flashcard,
     get_flashcards_by_keyword,
     flashcard_join_to_sentences,
+    update_flashcard,
 )
 from wing.crud.sentence import (
     create_sentence,
@@ -26,7 +27,7 @@ from wing.crud.word import (
     find_words,
 )
 from wing.models.book import Book, BookCreate, BookUpdate, BookFind
-from wing.models.flashcard import FlashcardCreate
+from wing.models.flashcard import FlashcardCreate, FlashcardUpdate
 from wing.models.sentence import SentenceCreate
 from wing.crud.book import delete_book, create_book, get_book, find_books, update_book
 from wing.models.user import UserCreate, UserUpdate
@@ -449,3 +450,19 @@ async def test_get_flashcard_by_values(session: AsyncSession, user_coroutine: Co
     for retrieved_flashcard in await get_flashcards_by_keyword(session, keyword=flashcard.keyword):
         translations.append(retrieved_flashcard.translations)
     assert translations == [["rakieta"]]
+
+
+@pytest.mark.asyncio
+async def test_update_flashcard(session: AsyncSession, flashcard_coroutine: Coroutine):
+    flashcard = await flashcard_coroutine
+    flashcard_updated = await update_flashcard(
+        session,
+        flashcard.id,
+        FlashcardUpdate(
+            user_id=flashcard.user_id,
+            keyword=flashcard.keyword,
+            translations=["niejednoznaczny"],
+        ),
+    )
+    assert flashcard_updated.keyword == flashcard.keyword
+    assert flashcard_updated.translations == ["niejednoznaczny"]

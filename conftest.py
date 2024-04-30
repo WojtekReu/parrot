@@ -14,9 +14,11 @@ from sqlmodel import SQLModel
 from api.server import app
 from wing.config import settings, assemble_db_connection
 from wing.crud.book import create_book, find_books
+from wing.crud.flashcard import create_flashcard, find_flashcards
 from wing.crud.user import create_user, get_user_by_email
 from wing.crud.word import create_word, find_words
 from wing.models.book import Book, BookCreate, BookFind
+from wing.models.flashcard import FlashcardCreate, FlashcardFind
 from wing.models.word import WordCreate, WordFind
 from wing.models.user import UserCreate
 from wing.db.session import get_session
@@ -118,6 +120,25 @@ async def user_coroutine(session):
             password="secret-password",
             email="jkowalski@example.com",
         ),
+    )
+
+
+@pytest.fixture
+async def flashcard_coroutine(session, user_coroutine):
+    user = await user_coroutine
+    flashcard_find = FlashcardFind(
+        user_id=user.id,
+        keyword="equivocal",
+    )
+    flashcards = await find_flashcards(session, flashcard_find)
+    flashcard = flashcards.first()
+    if flashcard:
+        return flashcard
+
+    flashcard_find.translations = ["dwuznaczny"]
+    return await create_flashcard(
+        session,
+        FlashcardCreate(**flashcard_find.dict(exclude_unset=True)),
     )
 
 

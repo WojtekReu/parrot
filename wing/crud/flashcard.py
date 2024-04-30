@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select, distinct
 
-from wing.models.flashcard import Flashcard, FlashcardCreate
+from wing.models.flashcard import Flashcard, FlashcardCreate, FlashcardFind, FlashcardUpdate
 from wing.models.flashcard_word import FlashcardWord
 from wing.models.sentence import Sentence
 from wing.models.sentence_flashcard import SentenceFlashcard
@@ -14,6 +14,14 @@ async def get_flashcard(session: AsyncSession, flashcard_id: int) -> Flashcard:
     query = select(Flashcard).where(Flashcard.id == flashcard_id)
     response = await session.execute(query)
     return response.scalar_one_or_none()
+
+
+async def find_flashcards(session: AsyncSession, flashcard: FlashcardFind) -> ScalarResult:
+    query = select(Flashcard).order_by(Flashcard.id)
+    for column_name, value in flashcard.dict(exclude_unset=True).items():
+        query = query.where(getattr(Flashcard, column_name) == value)
+    response = await session.execute(query)
+    return response.scalars()
 
 
 async def get_flashcards_by_keyword(session: AsyncSession, keyword: str) -> ScalarResult[Flashcard]:
@@ -49,6 +57,27 @@ async def create_flashcard(session: AsyncSession, flashcard: FlashcardCreate) ->
     return db_flashcard
 
 
+async def update_flashcard(
+    session: AsyncSession, flashcard_id: int, flashcard: FlashcardUpdate
+) -> Flashcard:
+    db_flashcard = await get_flashcard(session, flashcard_id)
+    if not db_flashcard:
+        raise HTTPException(status_code=404, detail=f"Not found flashcard by id: {flashcard_id}")
+
+    for k, v in flashcard.dict(exclude_unset=True).items():
+        setattr(db_flashcard, k, v)
+
+    try:
+        await session.commit()
+        await session.refresh(db_flashcard)
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=409, detail=f"Can't update flashcard, flashcard_id: {flashcard_id}"
+        )
+    return db_flashcard
+
+
 async def flashcard_join_to_sentences(
     session: AsyncSession, flashcard_id: int, sentence_ids: set
 ) -> None:
@@ -67,9 +96,7 @@ async def flashcard_join_to_sentences(
     await session.commit()
 
 
-async def flashcard_join_to_word(
-    session: AsyncSession, flashcard_id: int, word_ids: set
-) -> None:
+async def flashcard_join_to_word(session: AsyncSession, flashcard_id: int, word_ids: set) -> None:
     for word_id in word_ids:
         result = await session.execute(
             select(FlashcardWord)

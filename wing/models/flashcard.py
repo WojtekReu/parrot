@@ -17,6 +17,18 @@ class FlashcardCreate(FlashcardBase):
     translations: list = []
 
 
+class FlashcardUpdate(FlashcardBase):
+    user_id: int = None
+    keyword: str = None
+    translations: list = []
+
+
+class FlashcardFind(FlashcardBase):
+    user_id: int = None
+    keyword: str = None
+    translations: list = []
+
+
 class Flashcard(Base, FlashcardBase, table=True):
     __tablename__ = "flashcard"
 
