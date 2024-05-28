@@ -114,22 +114,17 @@ async def test_find_books_by_title(session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_update_book(session: AsyncSession):
-    created_book = await create_book(
+async def test_update_book(session: AsyncSession, book_for_modification):
+    book = await book_for_modification
+    await update_book(
         session,
-        BookCreate(
-            author="fake author",
-            title="fake title",
-        ),
-    )
-    updated_book = await update_book(
-        session,
-        created_book.id,
+        book.id,
         BookUpdate(
             author="Frank Herbert",
             title="Dune",
         ),
     )
+    updated_book = await get_book(session, book.id)
     assert updated_book.title == "Dune"
     assert updated_book.author == "Frank Herbert"
 

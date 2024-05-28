@@ -92,6 +92,20 @@ async def book_coroutine(session):
 
 
 @pytest.fixture
+async def book_for_modification(session):
+    book_find = BookFind(
+        title="Some Title for Modification",
+        author="Some Author For Modification",
+    )
+    books = await find_books(session, book_find)
+    book = books.first()
+    if book:
+        return book
+
+    return await create_book(session, BookCreate(**book_find.dict(exclude_unset=True)))
+
+
+@pytest.fixture
 async def word_coroutine(session):
     word_find = WordFind(
         pos="n",
