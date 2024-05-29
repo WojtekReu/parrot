@@ -11,7 +11,7 @@ router = APIRouter(
 )
 
 
-@router.put(
+@router.post(
     "/",
     summary="Create a new book.",
     status_code=status.HTTP_201_CREATED,
@@ -20,7 +20,7 @@ router = APIRouter(
 async def create_book_route(
     data: BookCreate,
     db: AsyncSession = Depends(get_session),
-):
+) -> Book:
     return await create_book(session=db, book=data)
 
 
@@ -47,15 +47,16 @@ async def get_book_route(book_id: int, db: AsyncSession = Depends(get_session)):
     return book
 
 
-@router.patch(
+@router.put(
     "/update/{book_id}",
     summary="Update book",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_200_OK,
+    response_model=Book,
 )
 async def update_book_route(
-    book_id: int, data: BookUpdate, db: AsyncSession = Depends(get_session)
-) -> None:
-    await update_book(session=db, book_id=book_id, book=data)
+    book_id: int, book: BookUpdate, db: AsyncSession = Depends(get_session)
+) -> Book:
+    return await update_book(session=db, book_id=book_id, book=book)
 
 
 @router.delete(

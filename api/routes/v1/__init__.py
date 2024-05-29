@@ -8,7 +8,7 @@ routes = (
     "flashcard",
     "sentence",
     "user",
-    # "word",
+    "word",
 )
 
 for module_name in routes:

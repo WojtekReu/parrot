@@ -110,7 +110,23 @@ async def word_coroutine(session):
     word_find = WordFind(
         pos="n",
         lem="test",
-        declinations=["tests"],
+        declinations={},
+        definition="test definition",
+    )
+    words = await find_words(session, word_find)
+    word = words.first()
+    if word:
+        return word
+
+    return await create_word(session, WordCreate(**word_find.dict(exclude_unset=True)))
+
+
+@pytest.fixture
+async def word_for_update(session):
+    word_find = WordFind(
+        pos="n",
+        lem="chapter",
+        declinations={"NNS": "chapters"},
         definition="test definition",
     )
     words = await find_words(session, word_find)

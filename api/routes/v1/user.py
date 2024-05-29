@@ -11,7 +11,7 @@ router = APIRouter(
 )
 
 
-@router.put(
+@router.post(
     "/",
     summary="Create a new user.",
     status_code=status.HTTP_201_CREATED,
