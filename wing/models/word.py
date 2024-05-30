@@ -13,17 +13,13 @@ class WordBase(SQLModel):
 
 
 class WordCreate(WordBase):
-    count: int = 0
-    pos: str = None
-    lem: str = None
-    declination: dict = {}
+    pos: str = Field(nullable=False)
     definition: str | None = None
 
 
 class WordUpdate(WordBase):
-    count: int | None = None
+    pos: str | None = None
     lem: str | None = None
-    declination: dict = {}
     definition: str | None = None
 
 

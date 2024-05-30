@@ -11,12 +11,12 @@ class BookBase(SQLModel):
 
 
 class BookCreate(BookBase):
-    title: str = None
-    author: str = None
+    ...
 
 
 class BookUpdate(BookBase):
-    ...
+    title: str = None
+    author: str = None
 
 
 class BookFind(BookBase):
