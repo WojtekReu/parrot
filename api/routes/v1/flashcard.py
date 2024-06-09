@@ -1,7 +1,13 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from wing.crud.flashcard import create_flashcard, get_flashcard, get_flashcard_ids_for_book
+from wing.crud.flashcard import (
+    create_flashcard,
+    get_flashcard,
+    get_flashcard_ids_for_book,
+    flashcard_join_to_sentences,
+    flashcard_separate_sentences,
+)
 from wing.db.session import get_session
 from wing.models.flashcard import Flashcard, FlashcardCreate
 
@@ -45,3 +51,19 @@ async def get_flashcard_route(flashcard_id: int, db: AsyncSession = Depends(get_
 )
 async def get_flashcard_ids_for_book_route(book_id: int, db: AsyncSession = Depends(get_session)):
     return await get_flashcard_ids_for_book(session=db, book_id=book_id, user_id=1)
+
+
+@router.post(
+    "/match-flashcard-sentences/{flashcard_id}",
+    summary="Update relations between flashcard and sentences",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def match_flashcard_sentences_route(
+    flashcard_id: int,
+    disconnect_ids: set[int],
+    sentence_ids: set[int],
+    db: AsyncSession = Depends(get_session),
+) -> None:
+    if disconnect_ids:
+        await flashcard_separate_sentences(db, flashcard_id, disconnect_ids)
+    return await flashcard_join_to_sentences(db, flashcard_id, sentence_ids)

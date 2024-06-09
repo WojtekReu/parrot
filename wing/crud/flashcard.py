@@ -1,9 +1,10 @@
 from fastapi import HTTPException
-from sqlalchemy import ScalarResult
+from sqlalchemy import Result, ScalarResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select, distinct
 
+from wing.crud.base import model_join_to_set, model_separate_list
 from wing.models.flashcard import Flashcard, FlashcardCreate, FlashcardFind, FlashcardUpdate
 from wing.models.flashcard_word import FlashcardWord
 from wing.models.sentence import Sentence
@@ -81,35 +82,25 @@ async def update_flashcard(
 async def flashcard_join_to_sentences(
     session: AsyncSession, flashcard_id: int, sentence_ids: set
 ) -> None:
-    for sentence_id in sentence_ids:
-        result = await session.execute(
-            select(SentenceFlashcard)
-            .where(SentenceFlashcard.flashcard_id == flashcard_id)
-            .where(SentenceFlashcard.sentence_id == sentence_id)
-        )
-        if not result.first():
-            sentence_flashcard = SentenceFlashcard(
-                flashcard_id=flashcard_id,
-                sentence_id=sentence_id,
-            )
-            session.add(sentence_flashcard)
-    await session.commit()
+    await model_join_to_set(
+        session=session,
+        relation_model=SentenceFlashcard,
+        source_id_name="flashcard_id",
+        source_id=flashcard_id,
+        target_id_name="sentence_id",
+        target_ids=sentence_ids,
+    )
 
 
-async def flashcard_join_to_word(session: AsyncSession, flashcard_id: int, word_ids: set) -> None:
-    for word_id in word_ids:
-        result = await session.execute(
-            select(FlashcardWord)
-            .where(FlashcardWord.flashcard_id == flashcard_id)
-            .where(FlashcardWord.word_id == word_id)
-        )
-        if not result.first():
-            flashcard_word = FlashcardWord(
-                flashcard_id=flashcard_id,
-                word_id=word_id,
-            )
-            session.add(flashcard_word)
-    await session.commit()
+async def flashcard_join_to_words(session: AsyncSession, flashcard_id: int, word_ids: set) -> None:
+    await model_join_to_set(
+        session=session,
+        relation_model=FlashcardWord,
+        source_id_name="flashcard_id",
+        source_id=flashcard_id,
+        target_id_name="word_id",
+        target_ids=word_ids,
+    )
 
 
 async def delete_flashcard(session: AsyncSession, flashcard_id: int) -> int:
@@ -128,3 +119,16 @@ async def delete_flashcards_by_book(session: AsyncSession, book_id: int) -> int:
     response = await session.execute(query)
     await session.commit()
     return response.rowcount
+
+
+async def flashcard_separate_sentences(
+    session: AsyncSession, flashcard_id: int, sentence_ids: set[int]
+) -> Result:
+    return await model_separate_list(
+        session=session,
+        relation_model=SentenceFlashcard,
+        source_id_name="flashcard_id",
+        source_id=flashcard_id,
+        target_id_name="sentence_id",
+        target_ids=sentence_ids,
+    )

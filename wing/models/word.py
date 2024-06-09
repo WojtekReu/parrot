@@ -6,10 +6,11 @@ from .base import Base
 
 class WordBase(SQLModel):
     count: int = Field(default=0, nullable=False)
-    pos: str = Field(default=None, nullable=True)
-    lem: str = Field(nullable=False)
+    pos: str = Field(default=None, nullable=True, max_length=1)
+    lem: str = Field(nullable=False, max_length=30)
     declination: dict = Field(default_factory=dict, sa_column=Column(JSON))
     definition: str = Field(nullable=True)
+    synset: str = Field(default=None, nullable=True, max_length=35)
 
 
 class WordCreate(WordBase):

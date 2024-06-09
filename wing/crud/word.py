@@ -1,13 +1,16 @@
 from fastapi import HTTPException
-from sqlalchemy import distinct, func, ScalarResult
+from sqlalchemy import distinct, func, ScalarResult, Result
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
+from wing.crud.base import model_join_to_set, model_separate_list
+from wing.crud.sentence import get_sentence
 from wing.models.flashcard_word import FlashcardWord
 from wing.models.sentence import Sentence
 from wing.models.sentence_word import SentenceWord
 from wing.models.word import Word, WordCreate, WordUpdate, WordFind
+from wing.ask_ml import find_definition
 
 
 async def get_word(session: AsyncSession, word_id: int) -> Word:
@@ -53,22 +56,15 @@ async def update_word(session: AsyncSession, word_id: int, word: WordUpdate) -> 
     return db_word
 
 
-async def word_join_to_sentences(
-    session: AsyncSession, word_id: int, sentence_ids: set
-) -> None:
-    for sentence_id in sentence_ids:
-        result = await session.execute(
-            select(SentenceWord)
-            .where(SentenceWord.word_id == word_id)
-            .where(SentenceWord.sentence_id == sentence_id)
-        )
-        if not result.first():
-            sentence_word = SentenceWord(
-                word_id=word_id,
-                sentence_id=sentence_id,
-            )
-            session.add(sentence_word)
-    await session.commit()
+async def word_join_to_sentences(session: AsyncSession, word_id: int, sentence_ids: set) -> None:
+    await model_join_to_set(
+        session=session,
+        relation_model=SentenceWord,
+        source_id_name="word_id",
+        source_id=word_id,
+        target_id_name="sentence_id",
+        target_ids=sentence_ids,
+    )
 
 
 async def delete_word(session: AsyncSession, word_id: int) -> int:
@@ -103,3 +99,49 @@ async def get_sentence_ids_with_word(session: AsyncSession, word_text: str) -> l
     )
     response = await session.execute(query)
     return [sentence_word.sentence_id for sentence_word in response.scalars()]
+
+
+async def find_synset(session: AsyncSession, flashcard_id: int, sentence_id: int) -> dict:
+    query = (
+        select(Word)
+        .join(FlashcardWord)
+        .where(Word.id == FlashcardWord.word_id, FlashcardWord.flashcard_id == flashcard_id)
+    )
+    response = await session.execute(query)
+    words = response.first()
+    if words:
+        word = words[0]
+        sentence = await get_sentence(session=session, sentence_id=sentence_id)
+        res1 = find_definition(word.lem, sentence.sentence)
+        result = {
+            "word": word,
+            "synsets": res1["synsets"],
+        }
+        return result
+    return {}
+
+
+async def word_separate_sentences(
+    session: AsyncSession, word_id: int, sentence_ids: set[int]
+) -> Result:
+    return await model_separate_list(
+        session=session,
+        relation_model=SentenceWord,
+        source_id_name="word_id",
+        source_id=word_id,
+        target_id_name="sentence_id",
+        target_ids=sentence_ids,
+    )
+
+
+async def find_words_for_flashcard(
+    session: AsyncSession,
+    flashcard_id: int,
+) -> ScalarResult[Word]:
+    query = (
+        select(Word)
+        .join(FlashcardWord)
+        .where(Word.id == FlashcardWord.word_id, FlashcardWord.flashcard_id == flashcard_id)
+    )
+    response = await session.execute(query)
+    return response.scalars()
