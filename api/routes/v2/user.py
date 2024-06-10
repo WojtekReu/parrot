@@ -6,8 +6,8 @@ from wing.db.session import get_session
 from wing.models.user import UserCreate, UserResponse
 
 router = APIRouter(
-    prefix="/user",
-    tags=["user"],
+    prefix="/users",
+    tags=["users"],
 )
 
 

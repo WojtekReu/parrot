@@ -5,6 +5,7 @@ from .routes import router as api_router
 from wing.config import settings
 from wing.models import *
 
+
 def get_application():
     app = FastAPI(
         title=settings.PROJECT_NAME,
@@ -29,8 +30,6 @@ async def health():
 
 
 origins = [
-    "http://localhost",
-    "http://localhost:8000",
     "http://localhost:8080",
 ]
 

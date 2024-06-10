@@ -48,12 +48,12 @@
                 <form @submit="saveChanges">
                     words: 
                     <span v-for="wf in wordsFlashcard" :key="id" class="wordFlashcard">
-                        <input type="radio" name="wordFlashcard" :value="wf.id" v-model="wordFlashcardInput" :checked="this.wordsFlashcard[0] == wf">{{ wf.lem }}
+                        <input type="radio" name="wordFlashcard" :value="wf.id" v-model="wordFlashcardInput" :checked="this.wordsFlashcard[0] == wf" @change="getSentencesForWord(wf.id)">{{ wf.lem }}
                     </span>
                     <ol class="sentences">
-                        <li v-for="sentence in sentences" :key="id">
+                        <li v-for="sentence in sentencesForWord" :key="id">
                             <input type="button" @click="getWordDefinition(sentence.id)" value="Check">
-                            <input type="checkbox" checked="true" name="sentence[]" :value="sentence.id"> {{ sentence.sentence.slice(0, 70) }}
+                            <input type="checkbox" checked="true" name="sentence[]" :value="sentence.id"> {{ sentence.sentence }}
                         </li>
                     </ol>
                     <div v-if="word">word.lem = {{ word.lem }}</div>
@@ -130,7 +130,7 @@ export default {
                 this.error = null
                 try {
                     let response = await fetch(
-                        `http://localhost:8000/api/v1/flashcard/${flashcardId}`
+                        `http://localhost:8000/api/v2/flashcards/${flashcardId}`
                     )
                     if (!response.ok) {
                         throw Error('ERROR: API result error for flashcard request')
@@ -139,14 +139,14 @@ export default {
                     if (this.flashcard) {
                         this.sentences = []
                         response = await fetch(
-                            `http://localhost:8000/api/v1/sentence/book/${this.book.id}/${flashcardId}`
+                            `http://localhost:8000/api/v2/books/${this.book.id}/flashcards/${flashcardId}/sentences`
                         )
                         if (!response.ok) {
                             throw Error('ERROR: API result error for sentence request')
                         }
                         this.sentences = await response.json()
                         response = await fetch(
-                            `http://localhost:8000/api/v1/flashcard/${this.flashcard.id}/words`
+                            `http://localhost:8000/api/v2/flashcards/${this.flashcard.id}/words`
                         )
                         if (!response.ok) {
                             throw Error('ERROR: API result error for words related to flashcard')
@@ -190,15 +190,34 @@ export default {
             this.word = null
             this.synsets = []
             this.words = []
+            this.wordFlashcardInput = 0
         },
         async editFlashcard() {
             this.showEditFlashcard = true
-
+            let wordId = this.wordsFlashcard[0].id
+            if (this.wordFlashcardInput) {
+                wordId = this.wordFlashcardInput
+            }
+            await this.getSentencesForWord(wordId)
+        },
+        async getSentencesForWord(wordId) {
+            try {
+                let response = await fetch(
+                    `http://localhost:8000/api/v2/words/${wordId}/sentences`
+                )
+                if (!response.ok) {
+                    throw Error('ERROR: API result error for word sentences request')
+                }
+                this.sentencesForWord = await response.json()
+                console.log(this.sentencesForWord)
+            } catch (err) {
+                this.error = err.message
+            }
         },
         async showDefinition() {
             try {
                 let response = await fetch(
-                    `http://localhost:8000/api/v1/word/find-words/${this.flashcard.id}`
+                    `http://localhost:8000/api/v2/flashcards/${this.flashcard.id}/words`
                 )
                 if (!response.ok) {
                     throw Error('ERROR: API result error for find-words request')
@@ -215,7 +234,7 @@ export default {
                     wordId = this.wordFlashcardInput
                 }
                 let response = await fetch(
-                    `http://localhost:8000/api/v1/word/${wordId}/sentence/${sentence_id}/synset`
+                    `http://localhost:8000/api/v2/words/${wordId}/sentences/${sentence_id}/synset`
                 )
                 if (!response.ok) {
                     throw Error('ERROR: API result error for word-match request')
@@ -265,12 +284,11 @@ export default {
                 }
                 try {
                     let response = await fetch(
-                        `http://localhost:8000/api/v1/word/update/${wordId}`, requestOptions
+                        `http://localhost:8000/api/v2/words/${wordId}/update`, requestOptions
                     )
                     if (!response.ok) {
                         throw Error('ERROR: API result error for word-match-save request')
                     }
-                    let response_json = await response.json()
                 } catch (err) {
                     this.error = err.message
                 }
@@ -286,7 +304,7 @@ export default {
                 }
                 try {
                     let response = await fetch(
-                        `http://localhost:8000/api/v1/word/match-word-sentences/${wordId}`, requestOptions2
+                        `http://localhost:8000/api/v2/words/${wordId}/sentences`, requestOptions2
                     )
                     if (!response.ok) {
                         throw Error('ERROR: API result error for match-word-sentences request')
@@ -307,10 +325,10 @@ export default {
                 }
                 try {
                     let response = await fetch(
-                        `http://localhost:8000/api/v1/flashcard/match-flashcard-sentences/${this.flashcard.id}`, requestOptions3
+                        `http://localhost:8000/api/v2/flashcards/${this.flashcard.id}/sentences`, requestOptions3
                     )
                     if (!response.ok) {
-                        throw Error('ERROR: API result error for match-flashcard-sentences request')
+                        throw Error('ERROR: API result error for update relations flashcard to sentences request')
                     }
                 } catch (err) {
                     this.error = err.message

@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from wing.crud.flashcard import (
     create_flashcard,
     get_flashcard,
-    get_flashcard_ids_for_book,
     flashcard_join_to_sentences,
     flashcard_separate_sentences,
     get_flashcard_words,
@@ -15,8 +14,8 @@ from wing.models.flashcard import Flashcard, FlashcardCreate
 from wing.models.word import Word
 
 router = APIRouter(
-    prefix="/flashcard",
-    tags=["flashcard"],
+    prefix="/flashcards",
+    tags=["flashcards"],
 )
 
 
@@ -46,18 +45,8 @@ async def get_flashcard_route(flashcard_id: int, db: AsyncSession = Depends(get_
     return flashcard
 
 
-@router.get(
-    "/book/{book_id}",
-    summary="Get all flashcard ids for book",
-    status_code=status.HTTP_200_OK,
-    response_model=list[int],
-)
-async def get_flashcard_ids_for_book_route(book_id: int, db: AsyncSession = Depends(get_session)):
-    return await get_flashcard_ids_for_book(session=db, book_id=book_id, user_id=1)
-
-
 @router.post(
-    "/match-flashcard-sentences/{flashcard_id}",
+    "/{flashcard_id}/sentences",
     summary="Update relations between flashcard and sentences",
     status_code=status.HTTP_204_NO_CONTENT,
 )

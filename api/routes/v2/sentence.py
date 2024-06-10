@@ -4,15 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from wing.crud.sentence import (
     create_sentence,
     get_sentence,
-    get_sentences_with_phrase,
-    get_sentences_for_flashcard,
 )
 from wing.db.session import get_session
 from wing.models.sentence import Sentence, SentenceCreate
 
 router = APIRouter(
-    prefix="/sentence",
-    tags=["sentence"],
+    prefix="/sentences",
+    tags=["sentences"],
 )
 
 
@@ -27,18 +25,6 @@ async def create_sentence_route(
     db: AsyncSession = Depends(get_session),
 ):
     return await create_sentence(session=db, sentence_create=data)
-
-
-@router.get(
-    "/book/{book_id}/{flashcard_id}",
-    summary="Get sentences for book and flashcard.",
-    status_code=status.HTTP_200_OK,
-    response_model=list[Sentence],
-)
-async def get_sentences_for_flashcard_route(
-    book_id: int, flashcard_id: int, db: AsyncSession = Depends(get_session)
-):
-    return await get_sentences_for_flashcard(session=db, book_id=book_id, flashcard_id=flashcard_id)
 
 
 @router.get(

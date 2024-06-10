@@ -10,7 +10,6 @@ from wing.crud.word import (
     find_synset,
     word_join_to_sentences,
     word_separate_sentences,
-    find_words_for_flashcard,
     get_word_sentences,
 )
 from wing.db.session import get_session
@@ -18,8 +17,8 @@ from wing.models.sentence import Sentence
 from wing.models.word import Word, WordCreate, WordUpdate
 
 router = APIRouter(
-    prefix="/word",
-    tags=["word"],
+    prefix="/words",
+    tags=["words"],
 )
 
 
@@ -47,7 +46,7 @@ async def get_word_route(word_id: int, db: AsyncSession = Depends(get_session)):
 
 
 @router.put(
-    "/update/{word_id}",
+    "/{word_id}/update",
     summary="Update word",
     status_code=status.HTTP_200_OK,
     response_model=Word,
@@ -59,7 +58,7 @@ async def update_word_route(
 
 
 @router.delete(
-    "/delete/{word_id}",
+    "/{word_id}/delete",
     summary="Delete word",
     status_code=status.HTTP_202_ACCEPTED,
 )
@@ -68,7 +67,7 @@ async def delete_word_route(word_id: int, db: AsyncSession = Depends(get_session
 
 
 @router.get(
-    "/{word_id}/sentence/{sentence_id}/synset",
+    "/{word_id}/sentences/{sentence_id}/synset",
     summary="Get synsets and definitions for word, the one word can be selected",
     status_code=status.HTTP_200_OK,
     response_model=dict,
@@ -77,34 +76,6 @@ async def find_synset_route(
     word_id: int, sentence_id: int, db: AsyncSession = Depends(get_session)
 ) -> dict:
     return await find_synset(session=db, word_id=word_id, sentence_id=sentence_id)
-
-
-@router.post(
-    "/match-word-sentences/{word_id}",
-    summary="Update relations between word and sentences",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
-async def match_word_sentences_route(
-    word_id: int,
-    disconnect_ids: set[int],
-    sentence_ids: set[int],
-    db: AsyncSession = Depends(get_session),
-) -> None:
-    if disconnect_ids:
-        await word_separate_sentences(db, word_id, disconnect_ids)
-    return await word_join_to_sentences(db, word_id, sentence_ids)
-
-
-@router.get(
-    "/find-words/{flashcard_id}",
-    summary="Get all word related to flashcard",
-    status_code=status.HTTP_200_OK,
-    response_model=list[Word],
-)
-async def find_words_for_flashcard_route(
-    flashcard_id: int, db: AsyncSession = Depends(get_session)
-) -> ScalarResult[Word]:
-    return await find_words_for_flashcard(db, flashcard_id)
 
 
 @router.get(
@@ -117,3 +88,19 @@ async def get_word_sentences_route(
     word_id: int, db: AsyncSession = Depends(get_session)
 ) -> ScalarResult[Sentence]:
     return await get_word_sentences(session=db, word_id=word_id)
+
+
+@router.post(
+    "/{word_id}/sentences",
+    summary="Update relations between word and sentences",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def match_word_sentences_route(
+    word_id: int,
+    disconnect_ids: set[int],
+    sentence_ids: set[int],
+    db: AsyncSession = Depends(get_session),
+) -> None:
+    if disconnect_ids:
+        await word_separate_sentences(db, word_id, disconnect_ids)
+    return await word_join_to_sentences(db, word_id, sentence_ids)
