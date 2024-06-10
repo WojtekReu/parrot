@@ -46,9 +46,14 @@
             </div>
             <div v-if="showEditFlashcard">
                 <form @submit="saveChanges">
+                    words: 
+                    <span v-for="wf in wordsFlashcard" :key="id" class="wordFlashcard">
+                        <input type="radio" name="wordFlashcard" :value="wf.id" v-model="wordFlashcardInput" :checked="this.wordsFlashcard[0] == wf">{{ wf.lem }}
+                    </span>
                     <ol class="sentences">
                         <li v-for="sentence in sentences" :key="id">
-                            <input type="button" @click="getWordDefinition(sentence.id)" value="Check"><input type="checkbox" checked="true" name="sentence[]" :value="sentence.id"> {{ sentence.sentence.slice(0, 70) }}
+                            <input type="button" @click="getWordDefinition(sentence.id)" value="Check">
+                            <input type="checkbox" checked="true" name="sentence[]" :value="sentence.id"> {{ sentence.sentence.slice(0, 70) }}
                         </li>
                     </ol>
                     <div v-if="word">word.lem = {{ word.lem }}</div>
@@ -103,11 +108,14 @@ export default {
             rightAnswer: '',
             source: '',
             sentences: [],
+            sentencesForWord: [],
             showEditFlashcard: false,
             word: null,
             synsets: [],
             sentenceCheckbox: '',
             words: [],
+            wordsFlashcard: [],
+            wordFlashcardInput: 0,
         }
     },
     methods: {
@@ -137,6 +145,13 @@ export default {
                             throw Error('ERROR: API result error for sentence request')
                         }
                         this.sentences = await response.json()
+                        response = await fetch(
+                            `http://localhost:8000/api/v1/flashcard/${this.flashcard.id}/words`
+                        )
+                        if (!response.ok) {
+                            throw Error('ERROR: API result error for words related to flashcard')
+                        }
+                        this.wordsFlashcard = await response.json()
                     }
                     this.status = 'ready'
                 } catch (err) {
@@ -178,6 +193,7 @@ export default {
         },
         async editFlashcard() {
             this.showEditFlashcard = true
+
         },
         async showDefinition() {
             try {
@@ -194,8 +210,12 @@ export default {
         },
         async getWordDefinition(sentence_id) {
             try {
+                let wordId = this.wordsFlashcard[0].id
+                if (this.wordFlashcardInput) {
+                    wordId = this.wordFlashcardInput
+                }
                 let response = await fetch(
-                    `http://localhost:8000/api/v1/word/find-synset/${this.flashcard.id}/${sentence_id}`
+                    `http://localhost:8000/api/v1/word/${wordId}/sentence/${sentence_id}/synset`
                 )
                 if (!response.ok) {
                     throw Error('ERROR: API result error for word-match request')
@@ -342,5 +362,8 @@ ol.sentences {
     max-height: 200px;
     overflow-x: hidden;
     overflow-y: auto;
+}
+.wordFlashcard{
+    margin-left: 5px;
 }
 </style>

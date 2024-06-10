@@ -115,23 +115,16 @@ async def get_word_sentences(
     )
 
 
-async def find_synset(session: AsyncSession, flashcard_id: int, sentence_id: int) -> dict:
-    query = (
-        select(Word)
-        .join(FlashcardWord)
-        .where(Word.id == FlashcardWord.word_id, FlashcardWord.flashcard_id == flashcard_id)
-    )
-    response = await session.execute(query)
-    words = response.first()
-    if words:
-        word = words[0]
+async def find_synset(session: AsyncSession, word_id: int, sentence_id: int) -> dict:
+    word = await get_word(session=session, word_id=word_id)
+    if word:
         sentence = await get_sentence(session=session, sentence_id=sentence_id)
-        res1 = find_definition(word.lem, sentence.sentence)
-        result = {
+        result = find_definition(word.lem, sentence.sentence)
+        response = {
             "word": word,
-            "synsets": res1["synsets"],
+            "synsets": result["synsets"],
         }
-        return result
+        return response
     return {}
 
 

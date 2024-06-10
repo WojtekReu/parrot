@@ -68,15 +68,15 @@ async def delete_word_route(word_id: int, db: AsyncSession = Depends(get_session
 
 
 @router.get(
-    "/find-synset/{flashcard_id}/{sentence_id}",
-    summary="Get definition for words correlated with flashcard and sentences",
+    "/{word_id}/sentence/{sentence_id}/synset",
+    summary="Get synsets and definitions for word, the one word can be selected",
     status_code=status.HTTP_200_OK,
     response_model=dict,
 )
 async def find_synset_route(
-    flashcard_id: int, sentence_id: int, db: AsyncSession = Depends(get_session)
+    word_id: int, sentence_id: int, db: AsyncSession = Depends(get_session)
 ) -> dict:
-    return await find_synset(session=db, flashcard_id=flashcard_id, sentence_id=sentence_id)
+    return await find_synset(session=db, word_id=word_id, sentence_id=sentence_id)
 
 
 @router.post(
