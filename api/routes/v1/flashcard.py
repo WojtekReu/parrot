@@ -1,4 +1,5 @@
 from fastapi import APIRouter, status, Depends, HTTPException
+from sqlalchemy import ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from wing.crud.flashcard import (
@@ -7,9 +8,11 @@ from wing.crud.flashcard import (
     get_flashcard_ids_for_book,
     flashcard_join_to_sentences,
     flashcard_separate_sentences,
+    get_flashcard_words,
 )
 from wing.db.session import get_session
 from wing.models.flashcard import Flashcard, FlashcardCreate
+from wing.models.word import Word
 
 router = APIRouter(
     prefix="/flashcard",
@@ -67,3 +70,15 @@ async def match_flashcard_sentences_route(
     if disconnect_ids:
         await flashcard_separate_sentences(db, flashcard_id, disconnect_ids)
     return await flashcard_join_to_sentences(db, flashcard_id, sentence_ids)
+
+
+@router.get(
+    "/{flashcard_id}/words",
+    summary="Get words related to flashcard",
+    status_code=status.HTTP_200_OK,
+    response_model=list[Word],
+)
+async def get_flashcard_words_route(
+    flashcard_id: int, db: AsyncSession = Depends(get_session)
+) -> ScalarResult[Word]:
+    return await get_flashcard_words(session=db, flashcard_id=flashcard_id)

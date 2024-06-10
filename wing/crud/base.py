@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy import Result
+from sqlalchemy import Result, ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
@@ -43,3 +43,23 @@ async def model_separate_list(
         .filter(getattr(relation_model, target_id_name).in_(target_ids))
     )
     return await session.execute(query)
+
+
+async def get_related_list(
+    session: AsyncSession,
+    target_model: Any,      # Sentence
+    relation_model: Any,    # WordSentence
+    relation_id_name: str,  # "word_id"
+    relation_id: int,       # word_id
+    target_id_name: str,    # "sentence_id"
+) -> ScalarResult[Any]:
+    query = (
+        select(target_model)
+        .join(relation_model)
+        .where(
+            getattr(relation_model, target_id_name) == target_model.id,
+            getattr(relation_model, relation_id_name) == relation_id,
+        )
+    )
+    response = await session.execute(query)
+    return response.scalars()

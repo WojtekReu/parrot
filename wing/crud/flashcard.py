@@ -4,11 +4,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select, distinct
 
-from wing.crud.base import model_join_to_set, model_separate_list
+from wing.crud.base import model_join_to_set, model_separate_list, get_related_list
 from wing.models.flashcard import Flashcard, FlashcardCreate, FlashcardFind, FlashcardUpdate
 from wing.models.flashcard_word import FlashcardWord
 from wing.models.sentence import Sentence
 from wing.models.sentence_flashcard import SentenceFlashcard
+from wing.models.word import Word
 
 
 async def get_flashcard(session: AsyncSession, flashcard_id: int) -> Flashcard:
@@ -100,6 +101,20 @@ async def flashcard_join_to_words(session: AsyncSession, flashcard_id: int, word
         source_id=flashcard_id,
         target_id_name="word_id",
         target_ids=word_ids,
+    )
+
+
+async def get_flashcard_words(
+    session: AsyncSession,
+    flashcard_id: int,
+) -> ScalarResult[Word]:
+    return await get_related_list(
+        session=session,
+        target_model=Word,
+        relation_model=FlashcardWord,
+        relation_id_name="flashcard_id",
+        relation_id=flashcard_id,
+        target_id_name="word_id",
     )
 
 

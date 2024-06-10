@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
-from wing.crud.base import model_join_to_set, model_separate_list
+from wing.crud.base import model_join_to_set, model_separate_list, get_related_list
 from wing.crud.sentence import get_sentence
 from wing.models.flashcard_word import FlashcardWord
 from wing.models.sentence import Sentence
@@ -99,6 +99,20 @@ async def get_sentence_ids_with_word(session: AsyncSession, word_text: str) -> l
     )
     response = await session.execute(query)
     return [sentence_word.sentence_id for sentence_word in response.scalars()]
+
+
+async def get_word_sentences(
+    session: AsyncSession,
+    word_id: int,
+) -> ScalarResult[Sentence]:
+    return await get_related_list(
+        session=session,
+        target_model=Sentence,
+        relation_model=SentenceWord,
+        relation_id_name="word_id",
+        relation_id=word_id,
+        target_id_name="sentence_id",
+    )
 
 
 async def find_synset(session: AsyncSession, flashcard_id: int, sentence_id: int) -> dict:

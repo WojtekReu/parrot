@@ -11,8 +11,10 @@ from wing.crud.word import (
     word_join_to_sentences,
     word_separate_sentences,
     find_words_for_flashcard,
+    get_word_sentences,
 )
 from wing.db.session import get_session
+from wing.models.sentence import Sentence
 from wing.models.word import Word, WordCreate, WordUpdate
 
 router = APIRouter(
@@ -92,6 +94,7 @@ async def match_word_sentences_route(
         await word_separate_sentences(db, word_id, disconnect_ids)
     return await word_join_to_sentences(db, word_id, sentence_ids)
 
+
 @router.get(
     "/find-words/{flashcard_id}",
     summary="Get all word related to flashcard",
@@ -99,7 +102,18 @@ async def match_word_sentences_route(
     response_model=list[Word],
 )
 async def find_words_for_flashcard_route(
-    flashcard_id: int,
-    db: AsyncSession = Depends(get_session)
+    flashcard_id: int, db: AsyncSession = Depends(get_session)
 ) -> ScalarResult[Word]:
     return await find_words_for_flashcard(db, flashcard_id)
+
+
+@router.get(
+    "/{word_id}/sentences",
+    summary="Get sentences related to word",
+    status_code=status.HTTP_200_OK,
+    response_model=list[Sentence],
+)
+async def get_word_sentences_route(
+    word_id: int, db: AsyncSession = Depends(get_session)
+) -> ScalarResult[Sentence]:
+    return await get_word_sentences(session=db, word_id=word_id)
