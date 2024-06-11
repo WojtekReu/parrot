@@ -12,11 +12,19 @@ from wing.models.sentence_word import SentenceWord
 from wing.models.word import Word, WordCreate, WordUpdate, WordFind
 from wing.ask_ml import find_definition
 
+DEFAULT_WORDS_LIMIT = 10
+
 
 async def get_word(session: AsyncSession, word_id: int) -> Word:
     query = select(Word).where(Word.id == word_id)
     response = await session.execute(query)
     return response.scalar_one_or_none()
+
+
+async def get_words(session: AsyncSession, limit: int = DEFAULT_WORDS_LIMIT) -> ScalarResult[str]:
+    query = select(distinct(Word.lem)).limit(limit)
+    response = await session.execute(query)
+    return response.scalars()
 
 
 async def find_words(session: AsyncSession, word: WordFind) -> ScalarResult[Word]:

@@ -29,6 +29,7 @@ from wing.crud.word import (
     find_words,
     word_separate_sentences,
     get_word_sentences,
+    get_words,
 )
 from wing.models.book import Book, BookCreate, BookUpdate, BookFind
 from wing.models.flashcard import FlashcardCreate, FlashcardUpdate
@@ -325,6 +326,14 @@ async def test_create_word(session: AsyncSession):
 async def test_get_word(session: AsyncSession):
     word = await get_word(session, 1)
     assert word.lem == "chapter"
+
+
+@pytest.mark.asyncio
+async def test_find_words_by_book(session: AsyncSession):
+    result = await get_words(session)
+    words = list(result)
+    assert len(words) > 4
+    assert "brooch" in words
 
 
 @pytest.mark.asyncio
