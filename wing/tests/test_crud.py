@@ -1,8 +1,9 @@
-from typing import Coroutine
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from wing.crud.book import delete_book, create_book, get_book, find_books, update_book
 from wing.crud.flashcard import (
     create_flashcard,
     get_flashcards_by_keyword,
@@ -24,12 +25,14 @@ from wing.crud.word import (
     update_word,
     get_sentence_ids_with_word,
     word_join_to_sentences,
+    find_synset,
     find_words,
+    word_separate_sentences,
+    get_word_sentences,
 )
 from wing.models.book import Book, BookCreate, BookUpdate, BookFind
 from wing.models.flashcard import FlashcardCreate, FlashcardUpdate
 from wing.models.sentence import SentenceCreate
-from wing.crud.book import delete_book, create_book, get_book, find_books, update_book
 from wing.models.user import UserCreate, UserUpdate
 from wing.models.word import Word, WordCreate, WordUpdate, WordFind
 
@@ -49,12 +52,11 @@ async def test_create_user(session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_get_user_by_email(session: AsyncSession, user_coroutine: Coroutine):
-    user = await user_coroutine
-    retrieved_user = await get_user_by_email(session, user.email)
+async def test_get_user_by_email(session: AsyncSession):
+    retrieved_user = await get_user_by_email(session, "jkowalski@example.com")
     assert retrieved_user.id is not None
-    assert retrieved_user.username == user.username
-    assert retrieved_user.email == user.email
+    assert retrieved_user.username == "jkowalski"
+    assert retrieved_user.email == "jkowalski@example.com"
 
 
 @pytest.mark.asyncio
@@ -77,45 +79,34 @@ async def test_create_book(session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_get_book(session: AsyncSession, book_coroutine: Coroutine):
-    book = await book_coroutine
-    received_book = await get_book(session, book.id)
-    assert received_book == book
+async def test_get_book(session: AsyncSession):
+    book = await get_book(session, 1)
+    assert book.title == "The Voyage Out"
+    assert book.author == "Virginia Woolf"
 
 
 @pytest.mark.asyncio
 async def test_find_books(session: AsyncSession):
-    await create_book(
-        session,
-        BookCreate(
-            title="To The Lighthouse",
-            author="Virginia Woolf",
-        ),
-    )
     books = [book for book in await find_books(session, BookFind())]
-    assert len(books) > 1
+    assert len(books) > 2
     assert isinstance(books[0], Book)
     assert "To The Lighthouse" in [book.title for book in books]
 
 
 @pytest.mark.asyncio
 async def test_find_books_by_title(session: AsyncSession):
-    book_created = await create_book(
-        session,
-        BookCreate(
-            title="The Sign of the Four",
-            author="Arthur Conan Doyle",
-        ),
-    )
-    books = [book for book in await find_books(session, BookFind(title=book_created.title))]
+    books = [book for book in await find_books(session, BookFind(title="The Sign of the Four"))]
     assert isinstance(books[0], Book)
-    assert books[0].title == book_created.title
+    assert books[0].title == "The Sign of the Four"
     assert len(books) == 1
 
 
 @pytest.mark.asyncio
-async def test_update_book(session: AsyncSession, book_for_modification):
-    book = await book_for_modification
+async def test_update_book(session: AsyncSession):
+    books = [
+        book for book in await find_books(session, BookFind(title="Some Title for Modification"))
+    ]
+    book = books[0]
     await update_book(
         session,
         book.id,
@@ -145,8 +136,8 @@ async def test_delete_book(session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_create_sentence(session: AsyncSession, book_coroutine: Coroutine):
-    book = await book_coroutine
+async def test_create_sentence(session: AsyncSession):
+    book = await get_book(session, 1)
     created_sentence = await create_sentence(
         session,
         SentenceCreate(
@@ -160,8 +151,8 @@ async def test_create_sentence(session: AsyncSession, book_coroutine: Coroutine)
 
 
 @pytest.mark.asyncio
-async def test_get_sentence(session: AsyncSession, book_coroutine: Coroutine):
-    book = await book_coroutine
+async def test_get_sentence(session: AsyncSession):
+    book = await get_book(session, 1)
     created_sentence = await create_sentence(
         session,
         SentenceCreate(
@@ -175,8 +166,8 @@ async def test_get_sentence(session: AsyncSession, book_coroutine: Coroutine):
 
 
 @pytest.mark.asyncio
-async def test_get_sentences_with_phrase(session: AsyncSession, book_coroutine: Coroutine):
-    book = await book_coroutine
+async def test_get_sentences_with_phrase(session: AsyncSession):
+    book = await get_book(session, 1)
     sentences = [
         "Watshon went to home.",
         "Someone went to home right now.",
@@ -199,11 +190,9 @@ async def test_get_sentences_with_phrase(session: AsyncSession, book_coroutine: 
 
 
 @pytest.mark.asyncio
-async def test_flashcard_join_to_sentence(
-    session: AsyncSession, book_coroutine: Coroutine, user_coroutine: Coroutine
-):
-    book = await book_coroutine
-    user = await user_coroutine
+async def test_flashcard_join_to_sentence(session: AsyncSession):
+    book = await get_book(session, 1)
+    user = await get_user(session, 1)
     sentences = [
         "The two horses had just lain down when a brood of ducklings",
         "She had protected the lost brood of ducklings.",
@@ -232,8 +221,8 @@ async def test_flashcard_join_to_sentence(
 
 
 @pytest.mark.asyncio
-async def test_get_sentences_with_word(session: AsyncSession, book_coroutine: Coroutine):
-    book = await book_coroutine
+async def test_get_sentences_with_word(session: AsyncSession):
+    book = await get_book(session, 1)
     sentences = [
         "Such is the natural life of a pig.",
         "The four young pigs raised their voices timidly.",
@@ -270,8 +259,8 @@ async def test_get_sentences_with_word(session: AsyncSession, book_coroutine: Co
 
 
 @pytest.mark.asyncio
-async def test_delete_sentence(session: AsyncSession, book_coroutine: Coroutine):
-    book = await book_coroutine
+async def test_delete_sentence(session: AsyncSession):
+    book = await get_book(session, 1)
     created_sentence = await create_sentence(
         session,
         SentenceCreate(
@@ -333,10 +322,9 @@ async def test_create_word(session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_get_word(session: AsyncSession, word_coroutine: Coroutine):
-    word = await word_coroutine
-    received_word = await get_word(session, word.id)
-    assert received_word == word
+async def test_get_word(session: AsyncSession):
+    word = await get_word(session, 1)
+    assert word.lem == "chapter"
 
 
 @pytest.mark.asyncio
@@ -415,8 +403,8 @@ async def test_delete_word(session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_create_flashcard(session: AsyncSession, user_coroutine: Coroutine):
-    user = await user_coroutine
+async def test_create_flashcard(session: AsyncSession):
+    user = await get_user(session, 1)
     flashcard = await create_flashcard(
         session,
         FlashcardCreate(
@@ -431,8 +419,8 @@ async def test_create_flashcard(session: AsyncSession, user_coroutine: Coroutine
 
 
 @pytest.mark.asyncio
-async def test_get_flashcard_by_values(session: AsyncSession, user_coroutine: Coroutine):
-    user = await user_coroutine
+async def test_get_flashcard_by_values(session: AsyncSession):
+    user = await get_user(session, 1)
     flashcard = await create_flashcard(
         session,
         FlashcardCreate(
@@ -448,8 +436,12 @@ async def test_get_flashcard_by_values(session: AsyncSession, user_coroutine: Co
 
 
 @pytest.mark.asyncio
-async def test_update_flashcard(session: AsyncSession, flashcard_coroutine: Coroutine):
-    flashcard = await flashcard_coroutine
+async def test_update_flashcard(session: AsyncSession):
+    user = await get_user(session, 1)
+    flashcard = await create_flashcard(
+        session,
+        FlashcardCreate(user_id=user.id, keyword="equivocal", translations=["dwuznaczny"]),
+    )
     flashcard_updated = await update_flashcard(
         session,
         flashcard.id,
@@ -461,3 +453,64 @@ async def test_update_flashcard(session: AsyncSession, flashcard_coroutine: Coro
     )
     assert flashcard_updated.keyword == flashcard.keyword
     assert flashcard_updated.translations == ["niejednoznaczny"]
+
+
+@patch("wing.crud.word.find_definition")
+@pytest.mark.asyncio
+async def test_find_synset(find_definition_mock, session: AsyncSession):
+    word = await get_word(session, 4)  # brooch
+    sentence = await get_sentence(session, 3)  # ...little brooch...
+
+    find_definition_mock.return_value = {
+        "found": 1,
+        "word": "brooch",
+        "synsets": [
+            [False, "brooch.n.01", "a decorative pin worn by women"],
+            [True, "brooch.v.01", "fasten with or as if with a brooch"],
+        ],
+        "matched_synset": "brooch.v.01",
+    }
+    result = await find_synset(session, word.id, sentence.id)
+
+    expected = {
+        "synsets": [
+            [False, "brooch.n.01", "a decorative pin worn by women"],
+            [True, "brooch.v.01", "fasten with or as if with a brooch"],
+        ],
+        "word": Word(
+            pos="n",
+            synset="",
+            lem="brooch",
+            count=0,
+            declination={"NNS": "brooches"},
+            definition="",
+            id=4,
+        ),
+    }
+    assert result == expected
+
+
+@pytest.mark.asyncio
+async def test_match_word_sentences(session: AsyncSession):
+    word = await get_word(session, 1)  # chapter
+    book = await get_book(session, 1)
+    sentence = await create_sentence(
+        session,
+        SentenceCreate(book_id=book.id, nr=1, sentence="The first chapter."),
+    )
+    await word_join_to_sentences(session, word_id=word.id, sentence_ids={sentence.id})
+
+    results = await get_word_sentences(session, word.id)
+
+    assert sentence in results
+
+
+@pytest.mark.asyncio
+async def test_match_word_sentences(session: AsyncSession):
+    word = await get_word(session, 1)  # chapter
+    results = await get_word_sentences(session, word.id)
+
+    await word_separate_sentences(session, word_id=word.id, sentence_ids={3})
+    results1 = await get_word_sentences(session, word.id)
+
+    assert len(list(results)) == len(list(results1)) + 1

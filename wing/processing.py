@@ -14,7 +14,7 @@ from .crud.flashcard import (
     get_flashcards_by_keyword,
     create_flashcard,
     flashcard_join_to_sentences,
-    flashcard_join_to_word,
+    flashcard_join_to_words,
 )
 from .crud.sentence import (
     create_sentence,
@@ -185,7 +185,7 @@ async def load_translations_content(
             if words:
                 word_id = max(words, key=lambda x: len(words[x]))
                 if words[word_id] != 0:
-                    await flashcard_join_to_word(session, flashcard.id, {word_id})
+                    await flashcard_join_to_words(session, flashcard.id, {word_id})
                     await flashcard_join_to_sentences(session, flashcard.id, set(words[word_id]))
                 else:
                     # think, what to do when there is no the word in this book
@@ -208,7 +208,7 @@ async def load_translations_content(
                 if word:
                     word_ids.add(word.id)
 
-            await flashcard_join_to_word(session, flashcard.id, word_ids)
+            await flashcard_join_to_words(session, flashcard.id, word_ids)
 
 
 def create_word_clone(

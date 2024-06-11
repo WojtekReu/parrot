@@ -1,8 +1,10 @@
+from unittest.mock import patch
+
 import pytest
 
 from conftest import BaseTestRouter
 
-from api.routes.v1 import router as api_router
+from api.routes.v2 import router as api_router
 
 
 @pytest.mark.asyncio
@@ -13,19 +15,26 @@ class TestBookRouter(BaseTestRouter):
         response = await client.get("/")
         assert response.status_code == 200
 
-    async def test_get_books(self, book_coroutine, client):
-        book = await book_coroutine
-        response = await client.get("/api/v1/book/all")
+    async def test_get_books(self, client):
+        response = await client.get("/api/v2/books/all")
         assert response.status_code == 200
-        assert dict(book) in response.json()
+        books = response.json()
+        assert 3 < len(books)
+        book = {
+            "author": "Virginia Woolf",
+            "id": 2,
+            "sentences_count": 0,
+            "title": "To The Lighthouse",
+            "words_count": 0,
+        }
+        assert book in books
 
-    async def test_get_book(self, book_coroutine, client):
-        book = await book_coroutine
-        response = await client.get(f"/api/v1/book/{book.id}")
+    async def test_get_book(self, client):
+        response = await client.get(f"/api/v2/books/1")
         assert response.status_code == 200
         assert response.json() == {
             "author": "Virginia Woolf",
-            "id": 2,
+            "id": 1,
             "sentences_count": 0,
             "title": "The Voyage Out",
             "words_count": 0,
@@ -33,7 +42,7 @@ class TestBookRouter(BaseTestRouter):
 
     async def test_create_book(self, client):
         response = await client.post(
-            "/api/v1/book/",
+            "/api/v2/books/",
             json={
                 "author": "Artur Conan Doyle",
                 "title": "The Sign of the Four",
@@ -45,10 +54,9 @@ class TestBookRouter(BaseTestRouter):
         assert data["author"] == "Artur Conan Doyle"
         assert isinstance(data["id"], int)
 
-    async def test_update_book(self, book_for_modification, client):
-        book = await book_for_modification
+    async def test_update_book(self, client):
         response = await client.put(
-            f"/api/v1/book/update/{book.id}",
+            f"/api/v2/books/4/update",
             json={
                 "author": "Ernest Hemingway",
                 "title": "The Old Man and the Sea",
@@ -62,17 +70,17 @@ class TestBookRouter(BaseTestRouter):
 
     async def test_delete_book(self, client):
         response0 = await client.post(
-            "/api/v1/book/",
+            "/api/v2/books/",
             json={
                 "author": "Nobody",
                 "title": "Book to remove",
             },
         )
         book = response0.json()
-        response = await client.delete(f"/api/v1/book/delete/{book['id']}")
+        response = await client.delete(f"/api/v2/books/{book['id']}/delete")
         assert response.status_code == 202
 
-        get_response = await client.get(f"/api/v1/book/{book['id']}")
+        get_response = await client.get(f"/api/v2/books/{book['id']}")
         data = get_response.json()
         assert data["detail"] == "Book not found with the given ID"
 
@@ -81,23 +89,22 @@ class TestBookRouter(BaseTestRouter):
 class TestWordRouter(BaseTestRouter):
     router = api_router
 
-    async def test_get_word(self, word_coroutine, client):
-        word = await word_coroutine
-        response = await client.get(f"/api/v1/word/{word.id}")
+    async def test_get_word(self, client):
+        response = await client.get(f"/api/v2/words/1")
         assert response.status_code == 200
         assert response.json() == {
-            "id": 3,
+            "id": 1,
             "count": 0,
-            "declination": {},
-            "definition": "test definition",
-            "lem": "test",
+            "declination": {"NNS": "chapters"},
+            "definition": "test definition for chapter",
+            "lem": "chapter",
             "pos": "n",
+            "synset": None,
         }
-        response.json()
 
     async def test_create_word(self, client):
         response = await client.post(
-            "/api/v1/word/",
+            "/api/v2/words/",
             json={
                 "lem": "tack",
                 "pos": "v",
@@ -112,10 +119,9 @@ class TestWordRouter(BaseTestRouter):
         assert data["lem"] == "tack"
         assert isinstance(data["id"], int)
 
-    async def test_update_word(self, word_for_update, client):
-        word = await word_for_update
+    async def test_update_word(self, client):
         response = await client.put(
-            f"/api/v1/word/update/{word.id}",
+            f"/api/v2/words/3/update",
             json={
                 "definition": "part of book",
                 "count": 8,
@@ -129,7 +135,7 @@ class TestWordRouter(BaseTestRouter):
 
     async def test_delete_word(self, client):
         response0 = await client.post(
-            "/api/v1/word/",
+            "/api/v2/words/",
             json={
                 "lem": "attitude",
                 "pos": "n",
@@ -140,6 +146,41 @@ class TestWordRouter(BaseTestRouter):
         )
         word = response0.json()
 
-        response = await client.delete(f"/api/v1/word/delete/{word['id']}")
+        response = await client.delete(f"/api/v2/words/{word['id']}/delete")
         assert response.status_code == 202
         assert response.text == "1"
+
+    @patch("wing.crud.word.find_definition")
+    async def test_find_definition(self, find_definition_mock, client):
+        find_definition_mock.return_value = {
+            "found": 1,
+            "word": "brooch",
+            "synsets": [
+                (False, "brooch.n.01", "a decorative pin worn by women"),
+                (True, "brooch.v.01", "fasten with or as if with a brooch"),
+            ],
+            "matched_synset": "brooch.v.01",
+        }
+
+        response = await client.get(
+            f"/api/v2/words/4/sentences/3/synset",
+        )
+        result = response.json()
+
+        expected = {
+            "synsets": [
+                [False, "brooch.n.01", "a decorative pin worn by women"],
+                [True, "brooch.v.01", "fasten with or as if with a brooch"],
+            ],
+            "word": {
+                "count": 0,
+                "declination": {"NNS": "brooches"},
+                "definition": "",
+                "id": 4,
+                "lem": "brooch",
+                "pos": "n",
+                "synset": "",
+            },
+        }
+
+        assert result == expected

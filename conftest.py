@@ -13,13 +13,15 @@ from sqlmodel import SQLModel
 
 from api.server import app
 from wing.config import settings, assemble_db_connection
-from wing.crud.book import create_book, find_books
-from wing.crud.flashcard import create_flashcard, find_flashcards
-from wing.crud.user import create_user, get_user_by_email
-from wing.crud.word import create_word, find_words
-from wing.models.book import Book, BookCreate, BookFind
-from wing.models.flashcard import FlashcardCreate, FlashcardFind
-from wing.models.word import WordCreate, WordFind
+from wing.crud.book import create_book
+from wing.crud.flashcard import create_flashcard
+from wing.crud.sentence import create_sentence
+from wing.crud.user import create_user
+from wing.crud.word import create_word, word_join_to_sentences
+from wing.models.book import BookCreate
+from wing.models.flashcard import FlashcardCreate
+from wing.models.sentence import SentenceCreate
+from wing.models.word import WordCreate
 from wing.models.user import UserCreate
 from wing.db.session import get_session
 
@@ -61,6 +63,7 @@ async def session(engine):
     async with engine.connect() as conn:
         tsx = await conn.begin()
         async with session_local(bind=conn) as session:
+            await create_tests_data(session)
             nested_tsx = await conn.begin_nested()
             yield session
 
@@ -69,81 +72,8 @@ async def session(engine):
             await tsx.rollback()
 
 
-@pytest.fixture
-def book():
-    return Book(
-        title="test book",
-        author="test author",
-    )
-
-
-@pytest.fixture
-async def book_coroutine(session):
-    book_find = BookFind(
-        title="The Voyage Out",
-        author="Virginia Woolf",
-    )
-    books = await find_books(session, book_find)
-    book = books.first()
-    if book:
-        return book
-
-    return await create_book(session, BookCreate(**book_find.dict(exclude_unset=True)))
-
-
-@pytest.fixture
-async def book_for_modification(session):
-    book_find = BookFind(
-        title="Some Title for Modification",
-        author="Some Author For Modification",
-    )
-    books = await find_books(session, book_find)
-    book = books.first()
-    if book:
-        return book
-
-    return await create_book(session, BookCreate(**book_find.dict(exclude_unset=True)))
-
-
-@pytest.fixture
-async def word_coroutine(session):
-    word_find = WordFind(
-        pos="n",
-        lem="test",
-        declinations={},
-        definition="test definition",
-    )
-    words = await find_words(session, word_find)
-    word = words.first()
-    if word:
-        return word
-
-    return await create_word(session, WordCreate(**word_find.dict(exclude_unset=True)))
-
-
-@pytest.fixture
-async def word_for_update(session):
-    word_find = WordFind(
-        pos="n",
-        lem="chapter",
-        declinations={"NNS": "chapters"},
-        definition="test definition",
-    )
-    words = await find_words(session, word_find)
-    word = words.first()
-    if word:
-        return word
-
-    return await create_word(session, WordCreate(**word_find.dict(exclude_unset=True)))
-
-
-@pytest.fixture
-async def user_coroutine(session):
-    user = await get_user_by_email(session, "jkowalski@example.com")
-    if user:
-        return user
-
-    return await create_user(
+async def create_tests_data(session):
+    user1 = await create_user(
         session,
         UserCreate(
             username="jkowalski",
@@ -151,25 +81,102 @@ async def user_coroutine(session):
             email="jkowalski@example.com",
         ),
     )
-
-
-@pytest.fixture
-async def flashcard_coroutine(session, user_coroutine):
-    user = await user_coroutine
-    flashcard_find = FlashcardFind(
-        user_id=user.id,
-        keyword="equivocal",
-    )
-    flashcards = await find_flashcards(session, flashcard_find)
-    flashcard = flashcards.first()
-    if flashcard:
-        return flashcard
-
-    flashcard_find.translations = ["dwuznaczny"]
-    return await create_flashcard(
+    book1 = await create_book(
         session,
-        FlashcardCreate(**flashcard_find.dict(exclude_unset=True)),
+        BookCreate(
+            title="The Voyage Out",
+            author="Virginia Woolf",
+        ),
     )
+    book2 = await create_book(
+        session,
+        BookCreate(
+            title="To The Lighthouse",
+            author="Virginia Woolf",
+        ),
+    )
+    book3 = await create_book(
+        session,
+        BookCreate(
+            title="The Sign of the Four",
+            author="Arthur Conan Doyle",
+        ),
+    )
+    book4 = await create_book(
+        session,
+        BookCreate(
+            title="Some Title for Modification",
+            author="Some Author For Modification",
+        ),
+    )
+    word1 = await create_word(
+        session,
+        WordCreate(
+            pos="n",
+            lem="chapter",
+            declination={"NNS": "chapters"},
+            definition="test definition for chapter",
+        ),
+    )
+    word2 = await create_word(
+        session,
+        WordCreate(
+            pos="n",
+            lem="respite",
+            declination={"NNS": "respites"},
+            definition="a (temporary) relief from harm or discomfort",
+            synset="reprieve.n.01",
+        ),
+    )
+    word3 = await create_word(
+        session,
+        WordCreate(
+            pos="x",
+            lem="word_for_update",
+            declination={"XX": "update_this_declination"},
+            definition="update this definition",
+            synset="update.x.99",
+        ),
+    )
+    word4 = await create_word(
+        session,
+        WordCreate(
+            pos="n",
+            lem="brooch",
+            declination={"NNS": "brooches"},
+            definition="",
+            synset="",
+        ),
+    )
+    sentence1 = await create_sentence(
+        session,
+        SentenceCreate(
+            book_id=book1.id,
+            nr=1,
+            sentence="Words of two or three syllables, with the stress distributed equally between the first syllable and the last.",
+        ),
+    )
+    sentence2 = await create_sentence(
+        session,
+        SentenceCreate(
+            book_id=book1.id,
+            nr=2,
+            sentence="This sentence should be updated, if you see it - no good!",
+        ),
+    )
+    sentence3 = await create_sentence(
+        session,
+        SentenceCreate(
+            book_id=book1.id, nr=3, sentence="This is the little brooch we all thought was lost."
+        ),
+    )
+    await word_join_to_sentences(session, word4.id, {sentence3.id})
+    await word_join_to_sentences(session, word1.id, {sentence3.id})
+    flashcard1 = await create_flashcard(
+        session, FlashcardCreate(user_id=user1.id, keyword="equivocal", translations=["dwuznaczny"])
+    )
+
+    return session
 
 
 class BaseTestRouter:

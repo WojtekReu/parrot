@@ -3,7 +3,7 @@ from typing import Coroutine
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from wing.crud.book import create_book
+from wing.crud.book import create_book, get_book
 from wing.crud.sentence import create_sentence, count_sentences_for_book
 from wing.crud.word import count_words_for_book
 from wing.models.book import BookCreate
@@ -19,8 +19,8 @@ At one end of the big barn, on a sort of raised platform, Major was already ensc
 
 
 @pytest.mark.asyncio
-async def test_load_sentences(session: AsyncSession, book_coroutine: Coroutine):
-    book = await book_coroutine
+async def test_load_sentences(session: AsyncSession):
+    book = await get_book(session, 3)
     pos_collections = await load_sentences(session, BOOK_RAW1, book.id)
     assert len(pos_collections) == 4
     assert len(pos_collections[0]) == 105
@@ -72,8 +72,8 @@ PREPARED_WORDS = {
 
 
 @pytest.mark.asyncio
-async def test_save_prepared_words(session: AsyncSession, book_coroutine: Coroutine):
-    book = await book_coroutine
+async def test_save_prepared_words(session: AsyncSession):
+    book = await get_book(session, 3)
     for lem, values in PREPARED_WORDS.items():
         sentence = await create_sentence(
             session,
