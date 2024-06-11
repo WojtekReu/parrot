@@ -14,7 +14,7 @@ from sqlmodel import SQLModel
 from api.server import app
 from wing.config import settings, assemble_db_connection
 from wing.crud.book import create_book
-from wing.crud.flashcard import create_flashcard
+from wing.crud.flashcard import create_flashcard, flashcard_join_to_words
 from wing.crud.sentence import create_sentence
 from wing.crud.user import create_user
 from wing.crud.word import create_word, word_join_to_sentences
@@ -174,6 +174,15 @@ async def create_tests_data(session):
     await word_join_to_sentences(session, word1.id, {sentence3.id})
     flashcard1 = await create_flashcard(
         session, FlashcardCreate(user_id=user1.id, keyword="equivocal", translations=["dwuznaczny"])
+    )
+    await flashcard_join_to_words(session, flashcard1.id, {word1.id})
+    flashcard2 = await create_flashcard(
+        session,
+        FlashcardCreate(
+            user_id=user1.id,
+            keyword="flashcard-for-update",
+            translations=["tłumaczenie do aktualizacji"],
+        ),
     )
 
     return session

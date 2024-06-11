@@ -8,9 +8,10 @@ from wing.crud.flashcard import (
     flashcard_join_to_sentences,
     flashcard_separate_sentences,
     get_flashcard_words,
+    update_flashcard,
 )
 from wing.db.session import get_session
-from wing.models.flashcard import Flashcard, FlashcardCreate
+from wing.models.flashcard import Flashcard, FlashcardCreate, FlashcardUpdate
 from wing.models.word import Word
 
 router = APIRouter(
@@ -59,6 +60,18 @@ async def match_flashcard_sentences_route(
     if disconnect_ids:
         await flashcard_separate_sentences(db, flashcard_id, disconnect_ids)
     return await flashcard_join_to_sentences(db, flashcard_id, sentence_ids)
+
+
+@router.put(
+    "/{flashcard_id}/update",
+    summary="Update flashcard",
+    status_code=status.HTTP_200_OK,
+    response_model=Flashcard,
+)
+async def update_flashcard_route(
+    flashcard_id: int, flashcard: FlashcardUpdate, db: AsyncSession = Depends(get_session)
+) -> Flashcard:
+    return await update_flashcard(session=db, flashcard_id=flashcard_id, flashcard=flashcard)
 
 
 @router.get(

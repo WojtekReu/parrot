@@ -184,3 +184,70 @@ class TestWordRouter(BaseTestRouter):
         }
 
         assert result == expected
+
+    async def test_get_flashcard(self, client):
+        response = await client.get("/api/v2/flashcards/1")
+        assert response.status_code == 200
+        assert response.json() == {
+            "id": 1,
+            "keyword": "equivocal",
+            "translations": ["dwuznaczny"],
+            "user_id": 1,
+        }
+
+    async def test_create_flashcard(self, client):
+        response = await client.post(
+            "/api/v2/flashcards/",
+            json={
+                "keyword": "rickety",
+                "translations": ["rozklekotany"],
+                "user_id": 1,
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["keyword"] == "rickety"
+        assert isinstance(data["id"], int)
+
+    async def test_update_flashcard(self, client):
+        response = await client.put(
+            "/api/v2/flashcards/2/update",
+            json={
+                "keyword": "repudiate",
+                "translations": ["odrzucać"],
+                "user_id": 1,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["keyword"] == "repudiate"
+        assert data["translations"] == ["odrzucać"]
+
+    async def test_flashcard_join_to_sentences(self, client):
+        response = await client.post(
+            "/api/v2/flashcards/1/sentences",
+            json={
+                "disconnect_ids": [],
+                "sentence_ids": [1],
+            },
+        )
+        assert response.status_code == 204
+
+    async def test_flashcard_get_words(self, client):
+        response = await client.get(
+            "/api/v2/flashcards/1/words",
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data == [
+            {
+                "count": 0,
+                "declination": {"NNS": "chapters"},
+                "definition": "test definition for chapter",
+                "id": 1,
+                "lem": "chapter",
+                "pos": "n",
+                "synset": None,
+            }
+        ]
