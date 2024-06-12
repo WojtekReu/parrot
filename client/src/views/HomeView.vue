@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <p>Read books and learn English.</p>
+    <p>Parrot - Read books and learn English.</p>
   </div>
 </template>
 

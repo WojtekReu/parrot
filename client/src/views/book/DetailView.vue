@@ -37,14 +37,26 @@
                     <div v-for="translation in flashcard.translations"><span class="label">Should be:</span>{{ translation }}</div>
                 </div>
             </div>
-            <input type="button" @click="editFlashcard" value="Edit">
+            <input type="button" @click="editWords" value="Edit Words">
+            <input type="button" @click="editTranslation" value="Edit Translation">
             <input type="button" @click="showDefinition" value="Show">
+            <div v-if="showEditTranslation">
+                <form @submit="saveTranslation">
+                    <p>{{ flashcard.keyword }}</p>
+                    <div v-for="translation in flashcard.translations" :key="id">
+                        <input type="text" name="translation[]" :value="translation">
+                    </div>
+                    <input type="button" @click="addTranslation" value="+">
+                    <input type="button" @click="removeTranslation" value="-"><br>
+                    <input type="submit" @click="saveTranslation" value="save">
+                </form>
+            </div>
             <div v-if="words.length > 0">
                 <ul>
                     <li v-for="w1 in words" :key="id">{{ w1.lem }} - {{ w1.synset }} - {{ w1.definition }}</li>
                 </ul>
             </div>
-            <div v-if="showEditFlashcard">
+            <div v-if="showEditWords">
                 <form @submit="saveChanges">
                     words: 
                     <span v-for="wf in wordsFlashcard" :key="id" class="wordFlashcard">
@@ -109,10 +121,12 @@ export default {
             source: '',
             sentences: [],
             sentencesForWord: [],
-            showEditFlashcard: false,
+            showEditWords: false,
+            showEditTranslation: false,
             word: null,
             synsets: [],
             sentenceCheckbox: '',
+            translationInput: '',
             words: [],
             wordsFlashcard: [],
             wordFlashcardInput: 0,
@@ -186,19 +200,23 @@ export default {
         getNextTranslation() {
             this.flashcardNr ++
             this.flashcardNrHidden = this.flashcardNr
-            this.showEditFlashcard = false
+            this.showEditWords = false
+            this.showEditTranslation = false
             this.word = null
             this.synsets = []
             this.words = []
             this.wordFlashcardInput = 0
         },
-        async editFlashcard() {
-            this.showEditFlashcard = true
+        async editWords() {
+            this.showEditWords = true
             let wordId = this.wordsFlashcard[0].id
             if (this.wordFlashcardInput) {
                 wordId = this.wordFlashcardInput
             }
             await this.getSentencesForWord(wordId)
+        },
+        editTranslation() {
+            this.showEditTranslation = true
         },
         async getSentencesForWord(wordId) {
             try {
@@ -209,7 +227,6 @@ export default {
                     throw Error('ERROR: API result error for word sentences request')
                 }
                 this.sentencesForWord = await response.json()
-                console.log(this.sentencesForWord)
             } catch (err) {
                 this.error = err.message
             }
@@ -276,7 +293,6 @@ export default {
                 let data = this.word
                 let wordId = this.word.id
                 delete data.id
-                console.log(data)
                 const requestOptions = {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
@@ -337,10 +353,53 @@ export default {
 
         },
         cancelChanges() {
-            this.showEditFlashcard = false
+            this.showEditWords = false
+            this.showEditTranslation = false
             this.word = null
             this.synsets = []
         },
+        addTranslation() {
+            this.flashcard.translations.push('')
+        },
+        removeTranslation() {
+            this.flashcard.translations.pop()
+        },
+        async saveTranslation(submitEvent) {
+            submitEvent.preventDefault()
+            let data4 = {
+                "flashcard": this.flashcard,
+            }
+
+            let translationList = submitEvent.target.form.elements["translation[]"]
+            if (translationList.value) {
+                this.flashcard.translations = [translationList.value]
+            } else {
+                this.flashcard.translations = []
+                translationList.forEach((el) => {
+                    this.flashcard.translations.push(el.value)
+                })
+            }
+            const requestOptions4 = {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(this.flashcard),
+            }
+            try {
+                let response = await fetch(
+                    `http://localhost:8000/api/v2/flashcards/${this.flashcard.id}/update`, requestOptions4
+                )
+                if (!response.ok) {
+                    throw Error('ERROR: API result error for update flashcard request')
+                }
+            } catch (err) {
+                this.error = err.message
+            }
+            this.showEditTranslation = false
+        },
+        writeTranslation(translation) {
+            let last = this.flashcard.translations.length - 1
+            this.flashcard.translations[last] = translation
+        }
     },
     mounted() {
         this.fetchData()
