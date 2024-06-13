@@ -329,7 +329,7 @@ async def test_get_word(session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_find_words_by_book(session: AsyncSession):
+async def test_get_words(session: AsyncSession):
     result = await get_words(session)
     words = list(result)
     assert len(words) > 4

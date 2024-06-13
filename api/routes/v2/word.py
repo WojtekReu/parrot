@@ -3,18 +3,19 @@ from sqlalchemy import ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from wing.crud.word import (
-    get_word,
     create_word,
-    update_word,
     delete_word,
+    find_words,
     find_synset,
+    get_word,
+    get_word_sentences,
+    update_word,
     word_join_to_sentences,
     word_separate_sentences,
-    get_word_sentences,
 )
 from wing.db.session import get_session
 from wing.models.sentence import Sentence
-from wing.models.word import Word, WordCreate, WordUpdate
+from wing.models.word import Word, WordCreate, WordUpdate, WordFind
 
 router = APIRouter(
     prefix="/words",
@@ -64,6 +65,18 @@ async def update_word_route(
 )
 async def delete_word_route(word_id: int, db: AsyncSession = Depends(get_session)) -> int:
     return await delete_word(session=db, word_id=word_id)
+
+
+@router.get(
+    "/find/{word_str}",
+    summary="Find word by lem or declination",
+    status_code=status.HTTP_200_OK,
+    response_model=list[Word],
+)
+async def find_word_route(
+    word_str: str, db: AsyncSession = Depends(get_session)
+) -> ScalarResult[Word]:
+    return await find_words(session=db, word=WordFind(lem=word_str))
 
 
 @router.get(

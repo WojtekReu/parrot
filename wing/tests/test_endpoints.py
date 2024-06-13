@@ -251,3 +251,22 @@ class TestWordRouter(BaseTestRouter):
                 "synset": None,
             }
         ]
+
+    async def test_find_words(self, client):
+        response = await client.get(
+            "/api/v2/words/find/chapter",
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data == [
+            {
+                "count": 0,
+                "declination": {"NNS": "chapters"},
+                "definition": "test definition for chapter",
+                "id": 1,
+                "lem": "chapter",
+                "pos": "n",
+                "synset": None,
+            }
+        ]
