@@ -6,28 +6,14 @@ const getFlashcardIds = (bookId) => {
   const error = ref(null)
 
   const load = async () => {
-    try {
-      let data = await fetch(`http://localhost:8000/api/v2/books/${bookId}`)
-      if (!data.ok) {
-        throw Error('ERROR: no book available')
-      }
-      book.value = await data.json()
-    }
-    catch (err) {
-      error.value = err.message
-    }
-    if (!error.value) {
-      try {
-        let data2 = await fetch(`http://localhost:8000/api/v2/books/${bookId}/flashcards`)
-        if (!data2.ok) {
-          throw Error('ERROR: no flashcards available')
-        }
-        flashcards.value = await data2.json()
-      }
-      catch (err) {
-        error.value = err.message
-      }
-    }
+    await fetch(`${process.env.VUE_APP_API_URL}/books/${bookId}`)
+      .then(response => response.json())
+      .then(data => book.value = data)
+      .catch(err => error.value = err.message)
+    await fetch(`${process.env.VUE_APP_API_URL}/books/${bookId}/flashcards`)
+    .then(response => response.json())
+    .then(data => flashcards.value = data)
+    .catch(err => error.value = err.message)
   }
 
   return { book, flashcards, error, load }

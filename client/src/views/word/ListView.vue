@@ -26,18 +26,10 @@ export default {
     },
     async searchWords() {
       if (this.wordsFilter) {
-        try {
-          let response = await fetch(
-            `http://localhost:8000/api/v2/words/find/${this.wordsFilter}`
-          )
-          if (!response.ok) {
-            throw Error('ERROR: API result error for word find request')
-          }
-          let data = await response.json()
-          this.wordsList = data
-        } catch (err) {
-          this.error = err.message
-        }
+        await fetch(`${process.env.VUE_APP_API_URL}/words/find/${this.wordsFilter}`)
+          .then(response => response.json())
+          .then(data => this.wordsList = data)
+          .catch(err => this.error = err.message)
       }
     }
   }

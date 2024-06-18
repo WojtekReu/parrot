@@ -22,6 +22,11 @@ const routes = [
     path: '/words',
     name: 'words',
     component: () => import(/* webpackChunkName: "words" */ '../views/word/ListView.vue')
+  },
+  {
+    path: '/word/search',
+    name: 'wordSearch',
+    component: () => import(/* webpackChunkName: "words" */ '../views/word/SearchView.vue')
   }
 ]
 
