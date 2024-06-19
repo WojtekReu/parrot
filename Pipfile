@@ -14,15 +14,16 @@ asyncpg = "*"
 psycopg2 = "*"
 pytest-asyncio = "*"
 fastapi = "*"
-uvicorn = {extras = ["standard"], version = "*"}
+uvicorn = "*"
 sqlmodel = "*"
 pydantic = {extras = ["email"], version = "*"}
 email-validator = "*"
 pydantic-settings = "*"
 httpx = "*"
+py-dict-client = "*"
 
 [dev-packages]
 pytest = "*"
 
 [requires]
-python_version = "3.11"
+python_version = "3.12"

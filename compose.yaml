@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:15
+    ports:
+      - "5432:5432"
+    environment:
+      - "POSTGRES_PASSWORD=postgres"
+#      - "POSTGRES_HOST_AUTH_METHOD=trust"
+  web:
+    build: .
+    command: python -m uvicorn api.server:app --port=8000 --host=0.0.0.0
+    volumes:
+      - $PWD:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - "POSTGRES_HOST=db"
+      - "POSTGRES_DBNAME=postgres"
+      - "POSTGRES_PORT=5432"
+      - "POSTGRES_USER=postgres"
+      - "POSTGRES_PASSWORD=postgres"
+
+networks:
+  bridge:
+
