@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 router = APIRouter(prefix="/v2")
 routes = (
+    "auth",
     "book",
     "flashcard",
     "sentence",

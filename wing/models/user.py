@@ -33,11 +33,17 @@ class UserUpdate(UserBase):
     last_name: str = None
 
 
-class UserResponse(UserBase, table=False):
-    username: str = None
-    first_name: str = None
-    last_name: str = None
-    email: EmailStr = None
+class UserPublic(UserBase):
+    password: str | None = None
+    email: EmailStr | None = None
+
+
+class UserRestricted(UserBase):
+    password: str | None = None
+
+
+class UserSecret(UserBase):
+    ...
 
 
 class User(Base, UserBase, table=True):

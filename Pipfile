@@ -21,6 +21,8 @@ email-validator = "*"
 pydantic-settings = "*"
 httpx = "*"
 py-dict-client = "*"
+python-jose = "*"
+passlib = "*"
 
 [dev-packages]
 pytest = "*"
