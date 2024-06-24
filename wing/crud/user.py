@@ -1,10 +1,12 @@
 from fastapi import HTTPException
 from passlib.context import CryptContext
+from sqlalchemy import ScalarResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
-from wing.models.user import User, UserCreate, UserUpdate
+from wing.crud.base import find_model
+from wing.models.user import User, UserCreate, UserFind, UserUpdate
 from wing.models.token import Status
 
 
@@ -27,6 +29,10 @@ async def get_user_by_email(session: AsyncSession, email: str) -> User:
     query = select(User).where(User.email == email)
     response = await session.execute(query)
     return response.scalar_one_or_none()
+
+
+async def find_users(session: AsyncSession, user: UserFind) -> ScalarResult:
+    return await find_model(session=session, instance_filter=user, model=User)
 
 
 async def create_user(session: AsyncSession, user: UserCreate) -> User:

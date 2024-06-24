@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select, distinct
 
-from wing.crud.base import model_join_to_set, model_separate_list, get_related_list
+from wing.crud.base import find_model, get_related_list, model_join_to_set, model_separate_list
 from wing.models.flashcard import Flashcard, FlashcardCreate, FlashcardFind, FlashcardUpdate
 from wing.models.flashcard_word import FlashcardWord
 from wing.models.sentence import Sentence
@@ -19,11 +19,7 @@ async def get_flashcard(session: AsyncSession, flashcard_id: int) -> Flashcard:
 
 
 async def find_flashcards(session: AsyncSession, flashcard: FlashcardFind) -> ScalarResult:
-    query = select(Flashcard).order_by(Flashcard.id)
-    for column_name, value in flashcard.dict(exclude_unset=True).items():
-        query = query.where(getattr(Flashcard, column_name) == value)
-    response = await session.execute(query)
-    return response.scalars()
+    return await find_model(session=session, instance_filter=flashcard, model=Flashcard)
 
 
 async def get_flashcards_by_keyword(session: AsyncSession, keyword: str) -> ScalarResult[Flashcard]:

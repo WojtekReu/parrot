@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
-from wing.crud.base import model_join_to_set, model_separate_list, get_related_list
+from wing.crud.base import find_model, get_related_list, model_join_to_set, model_separate_list
 from wing.crud.sentence import get_sentence
 from wing.models.flashcard_word import FlashcardWord
 from wing.models.sentence import Sentence
@@ -28,11 +28,7 @@ async def get_words(session: AsyncSession, limit: int = DEFAULT_WORDS_LIMIT) -> 
 
 
 async def find_words(session: AsyncSession, word: WordFind) -> ScalarResult[Word]:
-    query = select(Word).order_by(Word.id)
-    for column_name, value in word.dict(exclude_unset=True).items():
-        query = query.where(getattr(Word, column_name) == value)
-    response = await session.execute(query)
-    return response.scalars()
+    return await find_model(session=session, instance_filter=word, model=Word)
 
 
 async def create_word(session: AsyncSession, word: WordCreate) -> Word:

@@ -2,9 +2,9 @@ from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from wing.auth.jwthandler import get_current_user
-from wing.crud.user import create_user, get_user
+from wing.crud.user import create_user, get_user, find_users
 from wing.db.session import get_session
-from wing.models.user import UserCreate, UserPublic
+from wing.models.user import UserCreate, UserFind, UserPublic
 
 router = APIRouter(
     prefix="/users",
@@ -36,6 +36,16 @@ async def get_user_route(user_id: int, db: AsyncSession = Depends(get_session)):
     if user is None:
         raise HTTPException(status_code=404, detail="User not found with the given ID")
     return user
+
+
+@router.post(
+    "/search",
+    summary="Search user.",
+    status_code=status.HTTP_200_OK,
+    response_model=list[UserPublic],
+)
+async def get_users_route(data: UserFind, db: AsyncSession = Depends(get_session)):
+    return await find_users(session=db, user=data)
 
 
 @router.get(

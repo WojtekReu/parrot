@@ -5,6 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
 
+async def find_model(session: AsyncSession, instance_filter: Any, model: Any) -> ScalarResult:
+    query = select(model).order_by(model.id)
+    for column_name, value in instance_filter.dict(exclude_unset=True).items():
+        query = query.where(getattr(model, column_name) == value)
+    response = await session.execute(query)
+    return response.scalars()
+
+
 async def model_join_to_set(
     session: AsyncSession,
     relation_model: Any,
