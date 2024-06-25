@@ -173,7 +173,9 @@ async def create_tests_data(session):
     await word_join_to_sentences(session, word4.id, {sentence3.id})
     await word_join_to_sentences(session, word1.id, {sentence3.id})
     flashcard1 = await create_flashcard(
-        session, FlashcardCreate(user_id=user1.id, keyword="equivocal", translations=["dwuznaczny"])
+        session,
+        FlashcardCreate(user_id=user1.id, keyword="equivocal", translations=["dwuznaczny"]),
+        user1.id,
     )
     await flashcard_join_to_words(session, flashcard1.id, {word1.id})
     flashcard2 = await create_flashcard(
@@ -183,6 +185,7 @@ async def create_tests_data(session):
             keyword="flashcard-for-update",
             translations=["tłumaczenie do aktualizacji"],
         ),
+        user1.id,
     )
 
     return session

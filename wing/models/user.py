@@ -4,7 +4,7 @@ from sqlmodel import AutoString, Field, Relationship, SQLModel
 from .base import Base
 
 
-class UserPublic(SQLModel):
+class UserBase(SQLModel):
     username: str = Field(
         nullable=False,
         index=True,
@@ -12,6 +12,9 @@ class UserPublic(SQLModel):
     )
     first_name: str | None = None
     last_name: str | None = None
+
+class UserPublic(UserBase):
+    id: int
 
 
 class UserRestricted(UserPublic):
@@ -24,12 +27,14 @@ class UserRestricted(UserPublic):
     is_active: bool = True
 
 
-class UserBase(UserRestricted):
+class UserDb(UserRestricted):
     password: str | None = None
 
 
 class UserCreate(UserBase):
-    is_active: bool | None = None
+    password: str | None = None
+    email: EmailStr
+    is_active: bool = True
 
 
 class UserFind(UserBase):
@@ -44,7 +49,7 @@ class UserUpdate(UserBase):
     last_name: str = None
 
 
-class User(Base, UserBase, table=True):
+class User(Base, UserDb, table=True):
     __tablename__ = "user"
 
     flashcards: list["Flashcard"] = Relationship(back_populates="user")

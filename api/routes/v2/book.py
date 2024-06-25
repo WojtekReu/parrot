@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from wing.auth.jwthandler import get_current_user
 from wing.crud.book import create_book, find_books, get_book, update_book, delete_book
 from wing.crud.flashcard import get_flashcard_ids_for_book
 from wing.crud.sentence import get_sentences_for_flashcard
 from wing.db.session import get_session
 from wing.models.book import Book, BookCreate, BookFind, BookUpdate
 from wing.models.sentence import Sentence
+from wing.models.user import UserPublic
 
 router = APIRouter(
     prefix="/books",
@@ -64,9 +66,14 @@ async def delete_book_route(book_id: int, db: AsyncSession = Depends(get_session
     summary="Get all flashcard ids for book",
     status_code=status.HTTP_200_OK,
     response_model=list[int],
+    dependencies=[Depends(get_current_user)],
 )
-async def get_flashcard_ids_for_book_route(book_id: int, db: AsyncSession = Depends(get_session)):
-    return await get_flashcard_ids_for_book(session=db, book_id=book_id, user_id=1)
+async def get_flashcard_ids_for_book_route(
+    book_id: int,
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    return await get_flashcard_ids_for_book(session=db, book_id=book_id, user_id=current_user.id)
 
 
 @router.get(

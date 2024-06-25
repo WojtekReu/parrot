@@ -217,6 +217,7 @@ async def test_flashcard_join_to_sentence(session: AsyncSession):
             keyword="brood of ducklings",
             translations=["potomstwo kaczątek"],
         ),
+        user.id,
     )
     await flashcard_join_to_sentences(session, flashcard.id, sentence_ids)
 
@@ -421,6 +422,7 @@ async def test_create_flashcard(session: AsyncSession):
             keyword="stirring",
             translations=["poruszajacy"],
         ),
+        user.id,
     )
     assert flashcard.id is not None
     assert flashcard.keyword == "stirring"
@@ -437,6 +439,7 @@ async def test_get_flashcard_by_values(session: AsyncSession):
             keyword="rocket",
             translations=["rakieta"],
         ),
+        user.id,
     )
     translations = []
     for retrieved_flashcard in await get_flashcards_by_keyword(session, keyword=flashcard.keyword):
@@ -450,6 +453,7 @@ async def test_update_flashcard(session: AsyncSession):
     flashcard = await create_flashcard(
         session,
         FlashcardCreate(user_id=user.id, keyword="equivocal", translations=["dwuznaczny"]),
+        user.id,
     )
     flashcard_updated = await update_flashcard(
         session,

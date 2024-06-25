@@ -5,22 +5,17 @@ from .base import Base
 from .user import User
 
 
-class FlashcardBase(SQLModel):
-    user_id: int = Field(foreign_key="user.id")
+class FlashcardCreate(SQLModel):
     keyword: str = Field(nullable=False)
     translations: list = Field(default_factory=list, sa_column=Column(JSON))
 
 
-class FlashcardCreate(FlashcardBase):
-    user_id: int = None
-    keyword: str = None
-    translations: list = []
+class FlashcardBase(FlashcardCreate):
+    user_id: int = Field(foreign_key="user.id")
 
 
-class FlashcardUpdate(FlashcardBase):
-    user_id: int = None
-    keyword: str = None
-    translations: list = []
+class FlashcardUpdate(FlashcardCreate):
+    ...
 
 
 class FlashcardFind(FlashcardBase):

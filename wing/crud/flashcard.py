@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy import Result, ScalarResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,15 +43,16 @@ async def get_flashcard_ids_for_book(
     return [sf for sf in response.scalars()]
 
 
-async def create_flashcard(session: AsyncSession, flashcard: FlashcardCreate) -> Flashcard:
+async def create_flashcard(session: AsyncSession, flashcard: FlashcardCreate, user_id) -> Flashcard:
     db_flashcard = Flashcard(**flashcard.dict())
+    db_flashcard.user_id = user_id
     session.add(db_flashcard)
     try:
         await session.commit()
         await session.refresh(db_flashcard)
     except IntegrityError:
         await session.rollback()
-        raise HTTPException(status_code=409, detail="Can't create flashcard")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Can't create flashcard")
     return db_flashcard
 
 

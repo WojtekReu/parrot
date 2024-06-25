@@ -2,6 +2,7 @@ from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy import ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from wing.auth.jwthandler import get_current_user
 from wing.crud.flashcard import (
     create_flashcard,
     get_flashcard,
@@ -12,6 +13,7 @@ from wing.crud.flashcard import (
 )
 from wing.db.session import get_session
 from wing.models.flashcard import Flashcard, FlashcardCreate, FlashcardUpdate
+from wing.models.user import UserPublic
 from wing.models.word import Word
 
 router = APIRouter(
@@ -25,12 +27,14 @@ router = APIRouter(
     summary="Create a new flashcard.",
     status_code=status.HTTP_201_CREATED,
     response_model=Flashcard,
+    dependencies = [Depends(get_current_user)],
 )
 async def create_flashcard_route(
     data: FlashcardCreate,
     db: AsyncSession = Depends(get_session),
+    current_user: UserPublic = Depends(get_current_user),
 ):
-    return await create_flashcard(session=db, flashcard=data)
+    return await create_flashcard(session=db, flashcard=data, user_id=current_user.id)
 
 
 @router.get(
