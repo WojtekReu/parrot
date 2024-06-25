@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
 from fastapi.security import OAuth2
 from fastapi.security.utils import get_authorization_scheme_param
@@ -50,7 +50,7 @@ class OAuth2PasswordBearerCookie(OAuth2):
         return param
 
 
-security = OAuth2PasswordBearerCookie(token_url="/login")
+security = OAuth2PasswordBearerCookie(token_url="/api/v2/login")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -71,7 +71,7 @@ async def get_current_user(
     token: str = Depends(security), db: AsyncSession = Depends(get_session)
 ) -> UserPublic:
     credentials_exception = HTTPException(
-        status_code=401,
+        status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
@@ -85,8 +85,15 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
 
-    user = await get_user_by_username(username=token_data.username, session=db)
-    if not user:
+    current_user = await get_user_by_username(username=token_data.username, session=db)
+
+    if not current_user:
         raise credentials_exception
 
-    return UserPublic(**user.dict())
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Inactive user",
+        )
+
+    return UserPublic(**current_user.dict())
