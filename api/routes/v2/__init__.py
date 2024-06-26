@@ -10,6 +10,7 @@ routes = (
     "sentence",
     "user",
     "word",
+    "dictionary",
 )
 
 for module_name in routes:

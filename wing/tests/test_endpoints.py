@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import pytest
 
@@ -201,7 +201,7 @@ class TestWordRouter(BaseTestRouter):
             data="grant_type=&username=jkowalski&password=secret&scope=&client_id=",
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
-            }
+            },
         )
         response = await client.post(
             "/api/v2/flashcards/",
@@ -245,7 +245,7 @@ class TestWordRouter(BaseTestRouter):
             data="grant_type=&username=jkowalski&password=secret&scope=&client_id=",
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
-            }
+            },
         )
         response = await client.get(
             "/api/v2/flashcards/1/words",
@@ -283,3 +283,29 @@ class TestWordRouter(BaseTestRouter):
                 "synset": None,
             }
         ]
+
+
+@pytest.mark.asyncio
+@patch("wing.dictionary.dictionary_client")
+class TestDictionaryRouter(BaseTestRouter):
+    router = api_router
+
+    async def test_get_translation(self, dictionary_client, client):
+        def define(*args, **kwargs):
+            return Mock(
+                content=[
+                    {
+                        "word": args[0],
+                        "definition": "equivocal /ɪˈkwɪvəkəl/ <Adj>\n  dwuznaczny, niejednoznaczny",
+                    }
+                ]
+            )
+
+        dictionary_client.define = define
+
+        response = await client.get(f"/api/v2/dictionary/find/equivocal")
+        assert response.status_code == 200
+        assert response.json() == {
+            "word": "equivocal",
+            "translation": "equivocal /ɪˈkwɪvəkəl/ <Adj>\n  dwuznaczny, niejednoznaczny",
+        }

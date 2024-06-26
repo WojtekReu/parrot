@@ -77,7 +77,7 @@ async def create_tests_data(session):
         session,
         UserCreate(
             username="jkowalski",
-            password="secret-password",
+            password="secret",
             email="jkowalski@example.com",
         ),
     )
