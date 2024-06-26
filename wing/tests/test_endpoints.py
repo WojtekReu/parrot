@@ -196,12 +196,18 @@ class TestWordRouter(BaseTestRouter):
         }
 
     async def test_create_flashcard(self, client):
+        await client.post(
+            "/api/v2/login",
+            data="grant_type=&username=jkowalski&password=secret&scope=&client_id=",
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+            }
+        )
         response = await client.post(
             "/api/v2/flashcards/",
             json={
                 "keyword": "rickety",
                 "translations": ["rozklekotany"],
-                "user_id": 1,
             },
         )
         assert response.status_code == 201
@@ -234,6 +240,13 @@ class TestWordRouter(BaseTestRouter):
         assert response.status_code == 204
 
     async def test_flashcard_get_words(self, client):
+        await client.post(
+            "/api/v2/login",
+            data="grant_type=&username=jkowalski&password=secret&scope=&client_id=",
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+            }
+        )
         response = await client.get(
             "/api/v2/flashcards/1/words",
         )

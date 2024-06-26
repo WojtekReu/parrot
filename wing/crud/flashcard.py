@@ -12,8 +12,12 @@ from wing.models.sentence_flashcard import SentenceFlashcard
 from wing.models.word import Word
 
 
-async def get_flashcard(session: AsyncSession, flashcard_id: int) -> Flashcard:
+async def get_flashcard(
+    session: AsyncSession, flashcard_id: int, user_id: [int] = None
+) -> Flashcard:
     query = select(Flashcard).where(Flashcard.id == flashcard_id)
+    if user_id:
+        query = query.where(Flashcard.user_id == user_id)
     response = await session.execute(query)
     return response.scalar_one_or_none()
 

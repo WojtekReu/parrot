@@ -83,8 +83,14 @@ async def update_flashcard_route(
     summary="Get words related to flashcard",
     status_code=status.HTTP_200_OK,
     response_model=list[Word],
+    dependencies=[Depends(get_current_user)],
 )
 async def get_flashcard_words_route(
-    flashcard_id: int, db: AsyncSession = Depends(get_session)
+    flashcard_id: int,
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
 ) -> ScalarResult[Word]:
+    flashcard = await get_flashcard(session=db, flashcard_id=flashcard_id, user_id=current_user.id)
+    if not flashcard:
+        raise HTTPException(status_code=404, detail="Flashcard not found with the given ID")
     return await get_flashcard_words(session=db, flashcard_id=flashcard_id)

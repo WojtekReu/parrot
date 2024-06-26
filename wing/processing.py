@@ -172,10 +172,10 @@ async def load_translations_content(
             flashcard = await create_flashcard(
                 session,
                 FlashcardCreate(
-                    user_id=user_id,
                     keyword=source_text,
                     translations=[translation_str],
                 ),
+                user_id=user_id,
             )
         source_tokenized = nltk.pos_tag(nltk.word_tokenize(source_text))
         if len(source_tokenized) == 1:
