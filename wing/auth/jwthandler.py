@@ -16,7 +16,7 @@ from ..models.user import UserPublic
 
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
-ALGORITHM = "HS256"
+ALGORITHM = "HS512"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 

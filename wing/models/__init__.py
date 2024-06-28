@@ -9,6 +9,7 @@ __all__ = [
     "sentence",
     "sentence_flashcard",
     "sentence_word",
+    "token",
     "user",
     "word",
 ]

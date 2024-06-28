@@ -45,8 +45,28 @@ async def login_route(
         httponly=True,
         max_age=1800,
         expires=1800,
-        samesite="Lax",
+        samesite="lax",
         secure=False,
+    )
+
+    return response
+
+
+@router.post(
+    "/logout",
+    summary="Logout user",
+    status_code=status.HTTP_200_OK,
+    response_model=UserPublic,
+)
+async def logout_route():
+    content = {"message": "You are logged out."}
+    response = JSONResponse(content=content)
+    response.set_cookie(
+        "Authorization",
+        value="",
+        httponly=True,
+        max_age=1,
+        expires=1,
     )
 
     return response

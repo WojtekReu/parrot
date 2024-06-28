@@ -9,14 +9,7 @@ import sqlmodel
 from alembic import context
 
 from wing.config import settings
-from wing.models.book import Book
-from wing.models.flashcard import Flashcard
-from wing.models.sentence import Sentence
-from wing.models.user import User
-from wing.models.word import Word
-from wing.models.sentence_word import SentenceWord
-from wing.models.sentence_flashcard import SentenceFlashcard
-from wing.models.flashcard_word import FlashcardWord
+from wing.models import *
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
