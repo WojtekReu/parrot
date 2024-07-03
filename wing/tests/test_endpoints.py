@@ -7,6 +7,16 @@ from conftest import BaseTestRouter
 from api.routes.v2 import router as api_router
 
 
+async def client_logged_in(client):
+    await client.post(
+        "/api/v2/login",
+        data="grant_type=&username=jkowalski&password=secret&scope=&client_id=",
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+    )
+
+
 @pytest.mark.asyncio
 class TestBookRouter(BaseTestRouter):
     router = api_router
@@ -41,6 +51,7 @@ class TestBookRouter(BaseTestRouter):
         }
 
     async def test_create_book(self, client):
+        await client_logged_in(client)
         response = await client.post(
             "/api/v2/books/",
             json={
@@ -69,6 +80,7 @@ class TestBookRouter(BaseTestRouter):
         assert updated_book["title"] == "The Old Man and the Sea"
 
     async def test_delete_book(self, client):
+        await client_logged_in(client)
         response0 = await client.post(
             "/api/v2/books/",
             json={
@@ -196,13 +208,7 @@ class TestWordRouter(BaseTestRouter):
         }
 
     async def test_create_flashcard(self, client):
-        await client.post(
-            "/api/v2/login",
-            data="grant_type=&username=jkowalski&password=secret&scope=&client_id=",
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-        )
+        await client_logged_in(client)
         response = await client.post(
             "/api/v2/flashcards/",
             json={
@@ -240,13 +246,7 @@ class TestWordRouter(BaseTestRouter):
         assert response.status_code == 204
 
     async def test_flashcard_get_words(self, client):
-        await client.post(
-            "/api/v2/login",
-            data="grant_type=&username=jkowalski&password=secret&scope=&client_id=",
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-        )
+        await client_logged_in(client)
         response = await client.get(
             "/api/v2/flashcards/1/words",
         )

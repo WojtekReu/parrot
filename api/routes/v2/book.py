@@ -21,9 +21,11 @@ router = APIRouter(
     summary="Create a new book.",
     status_code=status.HTTP_201_CREATED,
     response_model=Book,
+    dependencies = [Depends(get_current_user)],
 )
 async def create_book_route(
     data: BookCreate,
+    current_user: UserPublic = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> Book:
     return await create_book(session=db, book=data)
