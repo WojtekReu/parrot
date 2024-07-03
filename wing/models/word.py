@@ -34,5 +34,9 @@ class WordFind(WordBase):
 class Word(Base, WordBase, table=True):
     __tablename__ = "word"
 
-    flashcard_words: list["FlashcardWord"] = Relationship(back_populates="word")
-    sentence_words: list["SentenceWord"] = Relationship(back_populates="word")
+    flashcard_words: list["FlashcardWord"] = Relationship(
+        back_populates="word", sa_relationship_kwargs={"cascade": "delete"}
+    )
+    sentence_words: list["SentenceWord"] = Relationship(
+        back_populates="word", sa_relationship_kwargs={"cascade": "delete"}
+    )

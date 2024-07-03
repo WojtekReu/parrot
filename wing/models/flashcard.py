@@ -28,5 +28,11 @@ class Flashcard(Base, FlashcardBase, table=True):
     __tablename__ = "flashcard"
 
     user: User = Relationship(back_populates="flashcards")
-    sentence_flashcards: list["SentenceFlashcard"] = Relationship(back_populates="flashcard")
-    flashcard_words: list["FlashcardWord"] = Relationship(back_populates="flashcard")
+    sentence_flashcards: list["SentenceFlashcard"] = Relationship(
+        back_populates="flashcard",
+        sa_relationship_kwargs={"cascade": "delete"},
+    )
+    flashcard_words: list["FlashcardWord"] = Relationship(
+        back_populates="flashcard",
+        sa_relationship_kwargs={"cascade": "delete"},
+    )

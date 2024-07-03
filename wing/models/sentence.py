@@ -20,5 +20,11 @@ class Sentence(Base, SentenceBase, table=True):
     __tablename__ = "sentence"
 
     book: Book = Relationship(back_populates="sentences")
-    sentence_flashcards: list["SentenceFlashcard"] = Relationship(back_populates="sentence")
-    sentence_words: list["SentenceWord"] = Relationship(back_populates="sentence")
+    sentence_flashcards: list["SentenceFlashcard"] = Relationship(
+        back_populates="sentence",
+        sa_relationship_kwargs={"cascade": "delete"},
+    )
+    sentence_words: list["SentenceWord"] = Relationship(
+        back_populates="sentence",
+        sa_relationship_kwargs={"cascade": "delete"},
+    )
