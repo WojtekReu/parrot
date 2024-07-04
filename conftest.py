@@ -81,26 +81,39 @@ async def create_tests_data(session):
             email="jkowalski@example.com",
         ),
     )
+    user2 = await create_user(
+        session,
+        UserCreate(
+            username="anowak",
+            password="secret",
+            email="anowak@example.com",
+        ),
+    )
     book1 = await create_book(
         session,
         BookCreate(
             title="The Voyage Out",
             author="Virginia Woolf",
         ),
+        user1.id,
     )
     book2 = await create_book(
         session,
         BookCreate(
             title="To The Lighthouse",
             author="Virginia Woolf",
+            is_public=True,
         ),
+        user1.id,
     )
     book3 = await create_book(
         session,
         BookCreate(
             title="The Sign of the Four",
             author="Arthur Conan Doyle",
+            is_public=True,
         ),
+        user1.id,
     )
     book4 = await create_book(
         session,
@@ -108,6 +121,7 @@ async def create_tests_data(session):
             title="Some Title for Modification",
             author="Some Author For Modification",
         ),
+        user1.id,
     )
     word1 = await create_word(
         session,

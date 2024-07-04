@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from wing.auth.jwthandler import get_current_user
 from wing.crud.word import (
     create_word,
     delete_word,
@@ -15,6 +16,7 @@ from wing.crud.word import (
 )
 from wing.db.session import get_session
 from wing.models.sentence import Sentence
+from wing.models.user import UserPublic
 from wing.models.word import Word, WordCreate, WordUpdate, WordFind
 
 router = APIRouter(
@@ -28,8 +30,13 @@ router = APIRouter(
     summary="Create new word",
     status_code=status.HTTP_201_CREATED,
     response_model=Word,
+    dependencies=[Depends(get_current_user)],
 )
-async def put_word_route(word: WordCreate, db: AsyncSession = Depends(get_session)):
+async def put_word_route(
+    word: WordCreate,
+    db: AsyncSession = Depends(get_session),
+    current_user: UserPublic = Depends(get_current_user),
+):
     return await create_word(session=db, word=word)
 
 
@@ -51,9 +58,13 @@ async def get_word_route(word_id: int, db: AsyncSession = Depends(get_session)):
     summary="Update word",
     status_code=status.HTTP_200_OK,
     response_model=Word,
+    dependencies=[Depends(get_current_user)],
 )
 async def update_word_route(
-    word_id: int, word: WordUpdate, db: AsyncSession = Depends(get_session)
+    word_id: int,
+    word: WordUpdate,
+    db: AsyncSession = Depends(get_session),
+    current_user: UserPublic = Depends(get_current_user),
 ) -> Word:
     return await update_word(session=db, word_id=word_id, word=word)
 
@@ -62,8 +73,13 @@ async def update_word_route(
     "/{word_id}/delete",
     summary="Delete word",
     status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(get_current_user)],
 )
-async def delete_word_route(word_id: int, db: AsyncSession = Depends(get_session)) -> int:
+async def delete_word_route(
+    word_id: int,
+    db: AsyncSession = Depends(get_session),
+    current_user: UserPublic = Depends(get_current_user),
+) -> int:
     return await delete_word(session=db, word_id=word_id)
 
 
@@ -107,12 +123,14 @@ async def get_word_sentences_route(
     "/{word_id}/sentences",
     summary="Update relations between word and sentences",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(get_current_user)],
 )
 async def match_word_sentences_route(
     word_id: int,
     disconnect_ids: set[int],
     sentence_ids: set[int],
     db: AsyncSession = Depends(get_session),
+    current_user: UserPublic = Depends(get_current_user),
 ) -> None:
     if disconnect_ids:
         await word_separate_sentences(db, word_id, disconnect_ids)

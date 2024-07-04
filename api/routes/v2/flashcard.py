@@ -27,7 +27,7 @@ router = APIRouter(
     summary="Create a new flashcard.",
     status_code=status.HTTP_201_CREATED,
     response_model=Flashcard,
-    dependencies = [Depends(get_current_user)],
+    dependencies=[Depends(get_current_user)],
 )
 async def create_flashcard_route(
     data: FlashcardCreate,
@@ -54,13 +54,20 @@ async def get_flashcard_route(flashcard_id: int, db: AsyncSession = Depends(get_
     "/{flashcard_id}/sentences",
     summary="Update relations between flashcard and sentences",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(get_current_user)],
 )
 async def match_flashcard_sentences_route(
     flashcard_id: int,
     disconnect_ids: set[int],
     sentence_ids: set[int],
+    current_user: UserPublic = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> None:
+    flashcard = get_flashcard(db, flashcard_id, current_user.id)
+
+    if not flashcard:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Flashcard not found by id: {flashcard_id}")
+
     if disconnect_ids:
         await flashcard_separate_sentences(db, flashcard_id, disconnect_ids)
     return await flashcard_join_to_sentences(db, flashcard_id, sentence_ids)
@@ -71,11 +78,17 @@ async def match_flashcard_sentences_route(
     summary="Update flashcard",
     status_code=status.HTTP_200_OK,
     response_model=Flashcard,
+    dependencies=[Depends(get_current_user)],
 )
 async def update_flashcard_route(
-    flashcard_id: int, flashcard: FlashcardUpdate, db: AsyncSession = Depends(get_session)
+    flashcard_id: int,
+    flashcard: FlashcardUpdate,
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
 ) -> Flashcard:
-    return await update_flashcard(session=db, flashcard_id=flashcard_id, flashcard=flashcard)
+    return await update_flashcard(
+        session=db, flashcard_id=flashcard_id, user_id=current_user.id, flashcard=flashcard
+    )
 
 
 @router.get(

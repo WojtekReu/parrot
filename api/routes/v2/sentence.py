@@ -1,12 +1,15 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from wing.auth.jwthandler import get_current_user
+from wing.crud.book import get_book
 from wing.crud.sentence import (
     create_sentence,
     get_sentence,
 )
 from wing.db.session import get_session
 from wing.models.sentence import Sentence, SentenceCreate
+from wing.models.user import UserPublic
 
 router = APIRouter(
     prefix="/sentences",
@@ -19,12 +22,19 @@ router = APIRouter(
     summary="Create a new sentence.",
     status_code=status.HTTP_201_CREATED,
     response_model=Sentence,
+    dependencies=[Depends(get_current_user)],
 )
 async def create_sentence_route(
     data: SentenceCreate,
     db: AsyncSession = Depends(get_session),
+    current_user: UserPublic = Depends(get_current_user),
 ):
-    return await create_sentence(session=db, sentence_create=data)
+    book = get_book(db, data.book_id, current_user.id)
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Book not found by id: {data.book_id}"
+        )
+    return await create_sentence(session=db, sentence=data)
 
 
 @router.get(

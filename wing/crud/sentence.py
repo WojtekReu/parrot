@@ -41,16 +41,16 @@ async def get_sentence_ids(session: AsyncSession, word: Word, book_id: int) -> l
     return [sentence_id for sentence_id in response.scalars()]
 
 
-async def create_sentence(session: AsyncSession, sentence_create: SentenceCreate) -> Sentence:
-    sentence = Sentence(**sentence_create.dict())
-    session.add(sentence)
+async def create_sentence(session: AsyncSession, sentence: SentenceCreate) -> Sentence:
+    db_sentence = Sentence(**sentence.dict())
+    session.add(db_sentence)
     try:
         await session.commit()
-        await session.refresh(sentence)
+        await session.refresh(db_sentence)
     except IntegrityError:
         await session.rollback()
         raise HTTPException(status_code=409, detail="Can't create sentence")
-    return sentence
+    return db_sentence
 
 
 async def delete_sentence(session: AsyncSession, sentence_id: int) -> int:

@@ -17,7 +17,7 @@ from wing.crud.sentence import (
     delete_sentences_by_book,
     get_sentences_with_phrase,
 )
-from wing.crud.user import create_user, get_user, get_user_by_email
+from wing.crud.user import create_user, get_user, get_user_by_email, get_user_by_username
 from wing.crud.word import (
     create_word,
     delete_word,
@@ -68,12 +68,14 @@ async def test_get_user_by_email_user_not_found(session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_create_book(session: AsyncSession):
+    user = await get_user_by_username(session, "jkowalski")
     created_book = await create_book(
         session,
         BookCreate(
             title="Nineteen Eighty-Four",
             author="Eric Arthur Blair",
         ),
+        user.id,
     )
     assert created_book.id is not None
     assert created_book.title == created_book.title
@@ -104,6 +106,7 @@ async def test_find_books_by_title(session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_update_book(session: AsyncSession):
+    user = await get_user_by_username(session, "jkowalski")
     books = [
         book for book in await find_books(session, BookFind(title="Some Title for Modification"))
     ]
@@ -111,6 +114,7 @@ async def test_update_book(session: AsyncSession):
     await update_book(
         session,
         book.id,
+        user.id,
         BookUpdate(
             author="Frank Herbert",
             title="Dune",
@@ -123,14 +127,16 @@ async def test_update_book(session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_delete_book(session: AsyncSession):
+    user = await get_user_by_username(session, "jkowalski")
     created_book = await create_book(
         session,
         BookCreate(
             title="Animal Farm",
             author="Eric Arthur Blair",
         ),
+        user.id,
     )
-    deleted_count = await delete_book(session, book_id=created_book.id)
+    deleted_count = await delete_book(session, book_id=created_book.id, user_id=user.id)
     assert deleted_count == 1
     result = await get_book(session, created_book.id)
     assert result is None
@@ -279,12 +285,14 @@ async def test_delete_sentence(session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_delete_sentences_by_book(session: AsyncSession):
+    user = await get_user_by_username(session, "jkowalski")
     book = await create_book(
         session,
         BookCreate(
             title="Ernest Hemingway",
             author="The Old Man and the See",
         ),
+        user.id,
     )
     sentences = [
         (1, "It is as though I were inferior."),
@@ -458,6 +466,7 @@ async def test_update_flashcard(session: AsyncSession):
     flashcard_updated = await update_flashcard(
         session,
         flashcard.id,
+        user.id,
         FlashcardUpdate(
             user_id=flashcard.user_id,
             keyword=flashcard.keyword,

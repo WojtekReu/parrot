@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from wing.crud.book import create_book, get_book
 from wing.crud.sentence import create_sentence, count_sentences_for_book
+from wing.crud.user import get_user_by_username
 from wing.crud.word import count_words_for_book
 from wing.models.book import BookCreate
 from wing.models.sentence import SentenceCreate
@@ -91,10 +92,15 @@ async def test_save_prepared_words(session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_count_sentences_and_words(session: AsyncSession):
-    book = await create_book(session, BookCreate(
-        title="Animal Farm",
-        author="Eric Arthur Blair",
-    ))
+    user = await get_user_by_username(session, "jkowalski")
+    book = await create_book(
+        session,
+        BookCreate(
+            title="Animal Farm",
+            author="Eric Arthur Blair",
+        ),
+        user.id,
+    )
     pos_collections = await load_sentences(session, BOOK_RAW1, book.id)
     for dest in pos_collections:
         await save_prepared_words(session, dest)

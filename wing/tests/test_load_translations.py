@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from wing.crud.book import create_book
 from wing.crud.flashcard import get_flashcard_ids_for_book, get_flashcard
 from wing.crud.sentence import get_sentence
-from wing.crud.user import create_user
+from wing.crud.user import create_user, get_user_by_username
 from wing.models.book import BookCreate
 from wing.models.user import UserCreate
 from wing.processing import load_translations_content, load_sentences, save_prepared_words
@@ -30,12 +30,14 @@ accurately. Sprinkled with endearments. I have promised to lend her Gibbon."""
 
 @pytest.mark.asyncio
 async def test_load_translations(session: AsyncSession):
+    user = await get_user_by_username(session, "jkowalski")
     book = await create_book(
         session,
         BookCreate(
             title="The Voyage Out",
             author="Virginia Woolf",
         ),
+        user.id,
     )
     user = await create_user(
         session,

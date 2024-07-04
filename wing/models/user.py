@@ -53,3 +53,4 @@ class User(Base, UserDb, table=True):
     __tablename__ = "user"
 
     flashcards: list["Flashcard"] = Relationship(back_populates="user")
+    books: list["Book"] = Relationship(back_populates="user")

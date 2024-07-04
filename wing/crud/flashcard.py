@@ -13,7 +13,7 @@ from wing.models.word import Word
 
 
 async def get_flashcard(
-    session: AsyncSession, flashcard_id: int, user_id: [int] = None
+    session: AsyncSession, flashcard_id: int, user_id: int | None = None
 ) -> Flashcard:
     query = select(Flashcard).where(Flashcard.id == flashcard_id)
     if user_id:
@@ -61,9 +61,9 @@ async def create_flashcard(session: AsyncSession, flashcard: FlashcardCreate, us
 
 
 async def update_flashcard(
-    session: AsyncSession, flashcard_id: int, flashcard: FlashcardUpdate
+    session: AsyncSession, flashcard_id: int, user_id: int, flashcard: FlashcardUpdate
 ) -> Flashcard:
-    db_flashcard = await get_flashcard(session, flashcard_id)
+    db_flashcard = await get_flashcard(session, flashcard_id, user_id)
     if not db_flashcard:
         raise HTTPException(status_code=404, detail=f"Not found flashcard by id: {flashcard_id}")
 

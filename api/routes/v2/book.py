@@ -21,14 +21,14 @@ router = APIRouter(
     summary="Create a new book.",
     status_code=status.HTTP_201_CREATED,
     response_model=Book,
-    dependencies = [Depends(get_current_user)],
+    dependencies=[Depends(get_current_user)],
 )
 async def create_book_route(
     data: BookCreate,
     current_user: UserPublic = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> Book:
-    return await create_book(session=db, book=data)
+    return await create_book(session=db, book=data, user_id=current_user.id)
 
 
 @router.get(
@@ -38,7 +38,7 @@ async def create_book_route(
     response_model=list[Book],
 )
 async def get_books_route(db: AsyncSession = Depends(get_session)):
-    return await find_books(session=db, book=BookFind())
+    return await find_books(session=db, book=BookFind(is_public=True))
 
 
 @router.get(
@@ -58,9 +58,14 @@ async def get_book_route(book_id: int, db: AsyncSession = Depends(get_session)):
     "/{book_id}/delete",
     summary="Delete book",
     status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(get_current_user)],
 )
-async def delete_book_route(book_id: int, db: AsyncSession = Depends(get_session)) -> int:
-    return await delete_book(session=db, book_id=book_id)
+async def delete_book_route(
+    book_id: int,
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> int:
+    return await delete_book(session=db, book_id=book_id, user_id=current_user.id)
 
 
 @router.get(
@@ -95,8 +100,12 @@ async def get_sentences_for_flashcard_route(
     summary="Update book",
     status_code=status.HTTP_200_OK,
     response_model=Book,
+    dependencies=[Depends(get_current_user)],
 )
 async def update_book_route(
-    book_id: int, book: BookUpdate, db: AsyncSession = Depends(get_session)
+    book_id: int,
+    book: BookUpdate,
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
 ) -> Book:
-    return await update_book(session=db, book_id=book_id, book=book)
+    return await update_book(session=db, book_id=book_id, user_id=current_user.id, book=book)

@@ -7,14 +7,21 @@ from conftest import BaseTestRouter
 from api.routes.v2 import router as api_router
 
 
-async def client_logged_in(client):
+async def client_logged_in(client, login, password):
     await client.post(
         "/api/v2/login",
-        data="grant_type=&username=jkowalski&password=secret&scope=&client_id=",
+        data=f"grant_type=&username={login}&password={password}&scope=&client_id=",
         headers={
             "Content-Type": "application/x-www-form-urlencoded",
         },
     )
+
+async def guest(client):
+    await client_logged_in(client, "akowalski", "secret")
+
+
+async def owner(client):
+    await client_logged_in(client, "jkowalski", "secret")
 
 
 @pytest.mark.asyncio
@@ -29,12 +36,14 @@ class TestBookRouter(BaseTestRouter):
         response = await client.get("/api/v2/books/all")
         assert response.status_code == 200
         books = response.json()
-        assert 3 < len(books)
+        assert len(books) == 2
         book = {
             "author": "Virginia Woolf",
             "id": 2,
+            "is_public": True,
             "sentences_count": 0,
             "title": "To The Lighthouse",
+            "user_id": 1,
             "words_count": 0,
         }
         assert book in books
@@ -45,13 +54,15 @@ class TestBookRouter(BaseTestRouter):
         assert response.json() == {
             "author": "Virginia Woolf",
             "id": 1,
+            "is_public": False,
             "sentences_count": 0,
             "title": "The Voyage Out",
+            "user_id": 1,
             "words_count": 0,
         }
 
     async def test_create_book(self, client):
-        await client_logged_in(client)
+        await owner(client)
         response = await client.post(
             "/api/v2/books/",
             json={
@@ -66,6 +77,7 @@ class TestBookRouter(BaseTestRouter):
         assert isinstance(data["id"], int)
 
     async def test_update_book(self, client):
+        await owner(client)
         response = await client.put(
             f"/api/v2/books/4/update",
             json={
@@ -80,7 +92,7 @@ class TestBookRouter(BaseTestRouter):
         assert updated_book["title"] == "The Old Man and the Sea"
 
     async def test_delete_book(self, client):
-        await client_logged_in(client)
+        await owner(client)
         response0 = await client.post(
             "/api/v2/books/",
             json={
@@ -95,6 +107,16 @@ class TestBookRouter(BaseTestRouter):
         get_response = await client.get(f"/api/v2/books/{book['id']}")
         data = get_response.json()
         assert data["detail"] == "Book not found with the given ID"
+
+    async def test_delete_book_by_guest(self, client):
+        await guest(client)
+        response = await client.delete(f"/api/v2/books/1/delete")
+        assert response.status_code == 401
+        assert response.json() == {"detail": "Not authenticated"}
+
+        get_response = await client.get(f"/api/v2/books/1")
+        book = get_response.json()
+        assert book['id'] == 1
 
 
 @pytest.mark.asyncio
@@ -115,6 +137,7 @@ class TestWordRouter(BaseTestRouter):
         }
 
     async def test_create_word(self, client):
+        await owner(client)
         response = await client.post(
             "/api/v2/words/",
             json={
@@ -132,6 +155,7 @@ class TestWordRouter(BaseTestRouter):
         assert isinstance(data["id"], int)
 
     async def test_update_word(self, client):
+        await owner(client)
         response = await client.put(
             f"/api/v2/words/3/update",
             json={
@@ -146,6 +170,7 @@ class TestWordRouter(BaseTestRouter):
         assert updated_word["count"] == 8
 
     async def test_delete_word(self, client):
+        await owner(client)
         response0 = await client.post(
             "/api/v2/words/",
             json={
@@ -208,7 +233,7 @@ class TestWordRouter(BaseTestRouter):
         }
 
     async def test_create_flashcard(self, client):
-        await client_logged_in(client)
+        await owner(client)
         response = await client.post(
             "/api/v2/flashcards/",
             json={
@@ -222,6 +247,7 @@ class TestWordRouter(BaseTestRouter):
         assert isinstance(data["id"], int)
 
     async def test_update_flashcard(self, client):
+        await owner(client)
         response = await client.put(
             "/api/v2/flashcards/2/update",
             json={
@@ -236,6 +262,7 @@ class TestWordRouter(BaseTestRouter):
         assert data["translations"] == ["odrzucać"]
 
     async def test_flashcard_join_to_sentences(self, client):
+        await owner(client)
         response = await client.post(
             "/api/v2/flashcards/1/sentences",
             json={
@@ -246,7 +273,7 @@ class TestWordRouter(BaseTestRouter):
         assert response.status_code == 204
 
     async def test_flashcard_get_words(self, client):
-        await client_logged_in(client)
+        await owner(client)
         response = await client.get(
             "/api/v2/flashcards/1/words",
         )
