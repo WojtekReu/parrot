@@ -15,12 +15,24 @@ services:
       - "8000:8000"
     depends_on:
       - db
+      - dict
+      - training
     environment:
       - "POSTGRES_HOST=db"
       - "POSTGRES_DBNAME=postgres"
       - "POSTGRES_PORT=5432"
       - "POSTGRES_USER=postgres"
       - "POSTGRES_PASSWORD=postgres"
+      - "SECRET_KEY=secret"
+    restart: unless-stopped
+
+  dict:
+    build: .
+    command: dictd -d nodetach --listen-to 0.0.0.0 --port 2628
+
+  training:
+    build: .
+    command: python multiconn-server.py 0.0.0.0 65432
 
 networks:
   bridge:

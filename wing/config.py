@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     # Secret key for PONS dictionary
     PONS_SECRET_KEY: str = Field("", env="PONS_SECRET_KEY")
     API_LOGS_PATH: str = Field("pons_api.log", env="API_LOGS_PATH")
-
+    NLTK_DATA_PREFIX: str = Field("/usr/local/share/nltk_data", env="NLTK_DATA_PREFIX")
 
 def assemble_db_connection(v: str | None = None, values: dict[str, Any] = None) -> Any:
     if isinstance(v, str):

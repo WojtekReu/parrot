@@ -1,4 +1,5 @@
 from pathlib import Path
+from wing.config import settings
 
 TYPE_WORD = "W"
 TYPE_SENTENCE = "S"
@@ -9,8 +10,8 @@ DEFAULT_LINE_NR = 0
 SENTENCES_LIMIT = 10
 DETERMINERS = "the", "a", "an"
 
-NLTK_DATA_PREFIX = Path("/usr/local/share/nltk_data")
-PRONOUNS_FILE = NLTK_DATA_PREFIX.joinpath("corpora", "dolch", "pronouns")
+
+PRONOUNS_FILE = Path(settings.NLTK_DATA_PREFIX).joinpath("corpora", "dolch", "pronouns")
 with open(PRONOUNS_FILE) as f:
     PRONOUNS = (pronoun for pronoun in f.read().split())
 
@@ -18,8 +19,15 @@ MIN_LEM_WORD = 3
 MAX_STEM_OCCURRENCE = 100
 
 # setting dictionary English to Polish, unix command: dict -D
-DICTIONARY = "fd-eng-pol"
-DEFINITION_KEY = "definition"
+DICTIONARY_HOST = "parrot-dict-1"
+DICTIONARY_PORT = 2628
+DICTIONARY_VOCABULARY = "fd-eng-pol"
+DICTIONARY_DEFINITION_KEY = "definition"
+
+# settings for learned neural network
+NEURAL_NETWORK_HOST = "parrot-training-1"
+NEURAL_NETWORK_PORT = 65432
+NEURAL_NETWORK_CONNECTIONS_NUMBER = 1
 
 def tag_to_pos(tag):
     """

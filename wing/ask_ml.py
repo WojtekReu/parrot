@@ -2,6 +2,7 @@ import json
 import selectors
 import socket
 import types
+from wing.structure import NEURAL_NETWORK_CONNECTIONS_NUMBER, NEURAL_NETWORK_HOST, NEURAL_NETWORK_PORT
 
 
 def start_connections(sel, host, port, num_conns, word):
@@ -40,7 +41,7 @@ def service_connection(sel, key, mask):
     if mask & selectors.EVENT_WRITE:
         if not data.outb and data.messages:
             data.outb = data.messages
-            data.messages = b''
+            data.messages = b""
         if data.outb:
             # print(f"Sending {data.outb!r} to connection {data.connid}")
             sent = sock.send(data.outb)  # Should be ready to write
@@ -50,9 +51,14 @@ def service_connection(sel, key, mask):
 def find_definition(word: str, sentence: str) -> [tuple[str, str]]:
     sel = selectors.DefaultSelector()
     message = {"word": word, "sentence": sentence}
-    host, port, num_conns = '127.0.0.1', 65432, 1
-    start_connections(sel, host, int(port), int(num_conns), json.dumps(message).encode())
-    response_str = ''
+    start_connections(
+        sel,
+        NEURAL_NETWORK_HOST,
+        NEURAL_NETWORK_PORT,
+        NEURAL_NETWORK_CONNECTIONS_NUMBER,
+        json.dumps(message).encode(),
+    )
+    response_str = ""
     try:
         while True:
             events = sel.select(timeout=1)
