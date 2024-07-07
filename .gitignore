@@ -2,4 +2,3 @@ __pycache__/
 .idea
 *.sqlite
 data/*
-alembic.ini
