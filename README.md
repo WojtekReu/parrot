@@ -5,6 +5,13 @@ technique to increase memorization process. All you need is your book in text fo
 list of translated phrases. You can download book from https://www.gutenberg.org/ or 
 https://archive.org/
 
+## Docker
+Run docker compose to build and run containers for project
+
+    docker compose up
+
+## Virtualenv
+If you don't want to use docker, you can bild project in virtualenv
 Run pipenv to install necessary packages:
 
     pipenv sync
@@ -14,11 +21,6 @@ Run install.py to install packages: dolch, punkt, averaged_perceptron_tagger, wo
     ./install.py
 
 Create database, database user and copy alembic.example.ini to alembic.ini and configure it.
-Don't forget to set database configuration.
-
-    cp alembic.example.ini alembic.ini
-    vim alembic.ini
-
 Run alembic migrations:
 
     alembic upgrade head
