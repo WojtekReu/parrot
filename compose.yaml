@@ -23,7 +23,7 @@ services:
       - "POSTGRES_PORT=5432"
       - "POSTGRES_USER=postgres"
       - "POSTGRES_PASSWORD=postgres"
-      - "SECRET_KEY=secret"
+    env_file: ./secrets.env
     restart: unless-stopped
 
   dict:
