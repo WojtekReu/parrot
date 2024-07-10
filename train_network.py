@@ -77,10 +77,4 @@ if __name__ == "__main__":
     with open("trained_network_100.pkl", "wb") as f:
         pickle.dump(classifiers, f, -1)
 
-    sentence = "were words of two or three syllables, with the stress distributed equally between the first syllable and the last"
-    word = "stress"
-    ss_name = classifiers[word].classify(word_definition_features(sentence, word))
-    stress_synset = wordnet.synset(ss_name)
-    print(f"{ss_name}    -->   {stress_synset.definition()}")
-
     print("Task completed :)")

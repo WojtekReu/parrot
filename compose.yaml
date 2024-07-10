@@ -8,7 +8,7 @@ services:
 #      - "POSTGRES_HOST_AUTH_METHOD=trust"
   web:
     build: .
-    command: python -m uvicorn api.server:app --port=8000 --host=0.0.0.0
+    command: sh entrypoint-web.sh
     volumes:
       - $PWD:/app
     ports:
@@ -16,7 +16,7 @@ services:
     depends_on:
       - db
       - dict
-      - training
+      - vocabulary
     environment:
       - "POSTGRES_HOST=db"
       - "POSTGRES_DBNAME=postgres"
@@ -30,9 +30,9 @@ services:
     build: .
     command: dictd -d nodetach --listen-to 0.0.0.0 --port 2628
 
-  training:
+  vocabulary:
     build: .
-    command: python multiconn-server.py 0.0.0.0 65432
+    command: sh entrypoint-vocabulary.sh
 
 networks:
   bridge:

@@ -21,9 +21,4 @@ RUN LANG=C.UTF-8 LC_ALL=C.UTF-8 pipenv install --system --ignore-pipfile --deplo
 
 RUN python3 install.py
 
-RUN alembic upgrade head
-
-RUN python3 train_network.py
-
-# CMD ["fastapi", "run", "app/main.py", "--port", "80"]
  CMD ["python3","-m", "uvicorn", "api.server:app", "--port=8000", "--host=0.0.0.0"]

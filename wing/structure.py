@@ -25,7 +25,7 @@ DICTIONARY_VOCABULARY = "fd-eng-pol"
 DICTIONARY_DEFINITION_KEY = "definition"
 
 # settings for learned neural network
-NEURAL_NETWORK_HOST = "parrot-training-1"
+NEURAL_NETWORK_HOST = "parrot-vocabulary-1"
 NEURAL_NETWORK_PORT = 65432
 NEURAL_NETWORK_CONNECTIONS_NUMBER = 1
 

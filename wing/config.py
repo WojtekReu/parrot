@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = Field("postgres", env="POSTGRES_USER")
     POSTGRES_PASSWORD: str = Field("postgres", env="POSTGRES_PASSWORD")
     POSTGRES_DBNAME: str = Field("postgres", env="POSTGRES_DBNAME")
-    POSTGRES_HOST: str = Field("localhost", env="POSTGRES_HOST")
+    POSTGRES_HOST: str = Field("parrot-db-1", env="POSTGRES_HOST")
     POSTGRES_PORT: int | str = Field("5432", env="POSTGRES_PORT")
     POSTGRES_ECHO: bool = Field(False, env="POSTGRES_ECHO")
     POSTGRES_POOL_SIZE: int = Field(10, env="POSTGRES_POOL_SIZE")
