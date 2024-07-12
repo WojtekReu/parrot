@@ -12,13 +12,13 @@ RUN set -eux; \
 
 COPY dictd.conf /etc/dictd/dictd.conf
 
-RUN pip install pipenv
+RUN pip install --no-cache pipenv
 
 #RUN pipenv sync
 
 #RUN pip install uvicorn fastapi
-RUN LANG=C.UTF-8 LC_ALL=C.UTF-8 pipenv install --system --ignore-pipfile --deploy
+RUN LANG=C.UTF-8 LC_ALL=C.UTF-8 pipenv install --system --ignore-pipfile --deploy --clear
 
 RUN python3 install.py
 
- CMD ["python3","-m", "uvicorn", "api.server:app", "--port=8000", "--host=0.0.0.0"]
+CMD ["python3","-m", "uvicorn", "api.server:app", "--port=8000", "--host=0.0.0.0"]

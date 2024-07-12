@@ -8,4 +8,4 @@ if [ ! -f trained_network_100.pkl ]; then
 fi
 
 echo "Starting vocabulary server"
-python3 vocabulary-server.py 0.0.0.0 65432
+python3 vocabulary-server.py

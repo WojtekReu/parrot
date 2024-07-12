@@ -24,11 +24,6 @@ DICTIONARY_PORT = 2628
 DICTIONARY_VOCABULARY = "fd-eng-pol"
 DICTIONARY_DEFINITION_KEY = "definition"
 
-# settings for learned neural network
-NEURAL_NETWORK_HOST = "parrot-vocabulary-1"
-NEURAL_NETWORK_PORT = 65432
-NEURAL_NETWORK_CONNECTIONS_NUMBER = 1
-
 def tag_to_pos(tag):
     """
     Change tag ex. 'VBD' to pos ex. 'v'

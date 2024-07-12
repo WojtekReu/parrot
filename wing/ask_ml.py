@@ -1,8 +1,12 @@
 import json
+import logging
 import selectors
 import socket
 import types
-from wing.structure import NEURAL_NETWORK_CONNECTIONS_NUMBER, NEURAL_NETWORK_HOST, NEURAL_NETWORK_PORT
+from wing.config import settings
+
+logging.basicConfig(encoding='utf-8', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def start_connections(sel, host, port, num_conns, word):
@@ -53,9 +57,9 @@ def find_definition(word: str, sentence: str) -> [tuple[str, str]]:
     message = {"word": word, "sentence": sentence}
     start_connections(
         sel,
-        NEURAL_NETWORK_HOST,
-        NEURAL_NETWORK_PORT,
-        NEURAL_NETWORK_CONNECTIONS_NUMBER,
+        settings.VOCABULARY_HOST,
+        settings.VOCABULARY_PORT,  # 2630
+        settings.VOCABULARY_CONNECTIONS_NUMBER,  # 1
         json.dumps(message).encode(),
     )
     response_str = ""
@@ -71,7 +75,7 @@ def find_definition(word: str, sentence: str) -> [tuple[str, str]]:
             if not sel.get_map():
                 break
     except KeyboardInterrupt:
-        print("Caught keyboard interrupt, exiting")
+        logger.info("Breaking by keyboard interrupt, exiting")
     finally:
         sel.close()
     # print(f"{response_str = }")
