@@ -4,7 +4,7 @@ from pydantic import Field, PostgresDsn
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv("../.env")
 
 
 class Settings(BaseSettings):
@@ -28,11 +28,16 @@ class Settings(BaseSettings):
     PONS_SECRET_KEY: str = Field("", env="PONS_SECRET_KEY")
     API_LOGS_PATH: str = Field("pons_api.log", env="API_LOGS_PATH")
     NLTK_DATA_PREFIX: str = Field("/usr/local/share/nltk_data", env="NLTK_DATA_PREFIX")
-    VOCABULARY_HOST: str = Field("localhost", env="VOCABULARY_HOST")
+    VOCABULARY_HOST: str = Field("parrot-vocabulary-1", env="VOCABULARY_HOST")
     VOCABULARY_PORT: int = Field(2630, env="VOCABULARY_PORT")
     VOCABULARY_BASE: str = Field("vocabulary.pkl", env="VOCABULARY_BASE")
     VOCABULARY_CONNECTIONS_NUMBER: int = Field(1, env="VOCABULARY_CONNECTIONS_NUMBER")
 
+    # setting dictionary English to Polish, unix command: dict -D
+    DICTIONARY_HOST: str = Field("parrot-dict-1", env="DICTIONARY_HOST")
+    DICTIONARY_PORT: int = Field(2628, env="DICTIONARY_PORT")
+    DICTIONARY_VOCABULARY: str = "fd-eng-pol"
+    DICTIONARY_DEFINITION_KEY: str = "definition"
 
 def assemble_db_connection(v: str | None = None, values: dict[str, Any] = None) -> Any:
     if isinstance(v, str):

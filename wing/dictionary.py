@@ -1,18 +1,13 @@
 from dictionary_client import DictionaryClient
 
-from wing.structure import (
-    DICTIONARY_DEFINITION_KEY,
-    DICTIONARY_HOST,
-    DICTIONARY_PORT,
-    DICTIONARY_VOCABULARY,
-)
+from wing.config import settings
 
 
 async def find_translations(word: str) -> str | None:
     dictionary_client = DictionaryClient(
-        host=DICTIONARY_HOST,
-        port=DICTIONARY_PORT,
+        host=settings.DICTIONARY_HOST,
+        port=settings.DICTIONARY_PORT,
     )
-    response = dictionary_client.define(word, db=DICTIONARY_VOCABULARY)
+    response = dictionary_client.define(word, db=settings.DICTIONARY_VOCABULARY)
     if response.content:
-        return response.content[0][DICTIONARY_DEFINITION_KEY]
+        return response.content[0][settings.DICTIONARY_DEFINITION_KEY]

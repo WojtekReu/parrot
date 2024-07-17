@@ -1,8 +1,8 @@
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 
 import pytest
 
-from conftest import BaseTestRouter
+from conftest import BaseTestRouter, DictionaryClientMock
 
 from api.routes.v2 import router as api_router
 
@@ -15,6 +15,7 @@ async def client_logged_in(client, login, password):
             "Content-Type": "application/x-www-form-urlencoded",
         },
     )
+
 
 async def guest(client):
     await client_logged_in(client, "akowalski", "secret")
@@ -116,7 +117,7 @@ class TestBookRouter(BaseTestRouter):
 
         get_response = await client.get(f"/api/v2/books/1")
         book = get_response.json()
-        assert book['id'] == 1
+        assert book["id"] == 1
 
 
 @pytest.mark.asyncio
@@ -313,23 +314,11 @@ class TestWordRouter(BaseTestRouter):
 
 
 @pytest.mark.asyncio
-@patch("wing.dictionary.dictionary_client")
+@patch("wing.dictionary.DictionaryClient", new=DictionaryClientMock)
 class TestDictionaryRouter(BaseTestRouter):
     router = api_router
 
-    async def test_get_translation(self, dictionary_client, client):
-        def define(*args, **kwargs):
-            return Mock(
-                content=[
-                    {
-                        "word": args[0],
-                        "definition": "equivocal /ɪˈkwɪvəkəl/ <Adj>\n  dwuznaczny, niejednoznaczny",
-                    }
-                ]
-            )
-
-        dictionary_client.define = define
-
+    async def test_get_translation(self, client):
         response = await client.get(f"/api/v2/dictionary/find/equivocal")
         assert response.status_code == 200
         assert response.json() == {

@@ -18,11 +18,6 @@ with open(PRONOUNS_FILE) as f:
 MIN_LEM_WORD = 3
 MAX_STEM_OCCURRENCE = 100
 
-# setting dictionary English to Polish, unix command: dict -D
-DICTIONARY_HOST = "parrot-dict-1"
-DICTIONARY_PORT = 2628
-DICTIONARY_VOCABULARY = "fd-eng-pol"
-DICTIONARY_DEFINITION_KEY = "definition"
 
 def tag_to_pos(tag):
     """

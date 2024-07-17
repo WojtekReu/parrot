@@ -1,4 +1,5 @@
 import asyncio
+from unittest.mock import MagicMock
 
 from httpx import AsyncClient
 import pytest
@@ -213,3 +214,15 @@ class BaseTestRouter:
         app_tested.dependency_overrides[get_session] = lambda: session
         async with AsyncClient(app=app_tested, base_url="http://test") as c:
             yield c
+
+
+class DictionaryClientMock(MagicMock):
+    def define(self, *args, **kwargs):
+        search_word = args[0]
+        possible_responses = {
+            "equivocal": [{
+                "word": "equivocal",
+                "definition": "equivocal /ɪˈkwɪvəkəl/ <Adj>\n  dwuznaczny, niejednoznaczny",
+            }]
+        }
+        return MagicMock(content=possible_responses.get(search_word))
