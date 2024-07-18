@@ -1,15 +1,16 @@
+from pathlib import Path
 from typing import Any
 
 from pydantic import Field, PostgresDsn
-from pydantic_settings import BaseSettings
-from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-load_dotenv("../.env")
+DOTENV_FILE = Path(".env")  # .env file in main project directory: parrot/.env
 
 
 class Settings(BaseSettings):
     VERSION: str = Field("0.0.1")
     PROJECT_NAME: str = Field("Flashcards for books")
+    SECRET_KEY: str | None = Field(None, env="SECRET_KEY")
     POSTGRES_USER: str = Field("postgres", env="POSTGRES_USER")
     POSTGRES_PASSWORD: str = Field("postgres", env="POSTGRES_PASSWORD")
     POSTGRES_DBNAME: str = Field("postgres", env="POSTGRES_DBNAME")
@@ -38,6 +39,9 @@ class Settings(BaseSettings):
     DICTIONARY_PORT: int = Field(2628, env="DICTIONARY_PORT")
     DICTIONARY_VOCABULARY: str = "fd-eng-pol"
     DICTIONARY_DEFINITION_KEY: str = "definition"
+
+    model_config = SettingsConfigDict(env_file=DOTENV_FILE)
+
 
 def assemble_db_connection(v: str | None = None, values: dict[str, Any] = None) -> Any:
     if isinstance(v, str):

@@ -11,6 +11,7 @@ routes = (
     "user",
     "word",
     "dictionary",
+    "translation",
 )
 
 for module_name in routes:

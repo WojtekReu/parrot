@@ -325,3 +325,15 @@ class TestDictionaryRouter(BaseTestRouter):
             "word": "equivocal",
             "translation": "equivocal /ɪˈkwɪvəkəl/ <Adj>\n  dwuznaczny, niejednoznaczny",
         }
+
+
+@pytest.mark.asyncio
+class TestTranslationRouter(BaseTestRouter):
+    router = api_router
+
+    async def test_get_translation_from_sql(self, client):
+        response = await client.get(f"/api/v2/translation/find/chapter")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["word"] == "chapter"
+        assert data["definition"] == "/ˈʧæptə/ <N>\n  rozdział"

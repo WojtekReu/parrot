@@ -17,6 +17,7 @@ from wing.crud.sentence import (
     delete_sentences_by_book,
     get_sentences_with_phrase,
 )
+from wing.crud.translation import create_translation, get_translation_by_word
 from wing.crud.user import create_user, get_user, get_user_by_email, get_user_by_username
 from wing.crud.word import (
     create_word,
@@ -34,6 +35,7 @@ from wing.crud.word import (
 from wing.models.book import Book, BookCreate, BookUpdate, BookFind
 from wing.models.flashcard import FlashcardCreate, FlashcardUpdate
 from wing.models.sentence import SentenceCreate
+from wing.models.translation import Translation
 from wing.models.user import UserCreate, UserUpdate
 from wing.models.word import Word, WordCreate, WordUpdate, WordFind
 
@@ -536,3 +538,21 @@ async def test_match_word_sentences(session: AsyncSession):
     results1 = await get_word_sentences(session, word.id)
 
     assert len(list(results)) == len(list(results1)) + 1
+
+
+@pytest.mark.asyncio
+async def test_create_translation(session: AsyncSession):
+    translation = Translation(
+        word="magic",
+        definition="/ˈmæʤɪk/\nI.  <N>  magia, czary, czar\nII.  <Adj>  magiczny, czarodziejski",
+    )
+    translation_db = await create_translation(session, translation)
+    assert translation_db.word == translation.word
+    assert translation_db.definition == translation.definition
+
+
+@pytest.mark.asyncio
+async def test_get_translation(session: AsyncSession):
+    translation_db = await get_translation_by_word(session, "chapter")
+    assert translation_db.word == "chapter"
+    assert translation_db.definition == "/ˈʧæptə/ <N>\n  rozdział"

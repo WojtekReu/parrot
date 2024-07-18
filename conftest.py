@@ -17,11 +17,13 @@ from wing.config import settings, assemble_db_connection
 from wing.crud.book import create_book
 from wing.crud.flashcard import create_flashcard, flashcard_join_to_words
 from wing.crud.sentence import create_sentence
+from wing.crud.translation import create_translation
 from wing.crud.user import create_user
 from wing.crud.word import create_word, word_join_to_sentences
 from wing.models.book import BookCreate
 from wing.models.flashcard import FlashcardCreate
 from wing.models.sentence import SentenceCreate
+from wing.models.translation import Translation
 from wing.models.word import WordCreate
 from wing.models.user import UserCreate
 from wing.db.session import get_session
@@ -202,6 +204,10 @@ async def create_tests_data(session):
         ),
         user1.id,
     )
+    await create_translation(session, Translation(
+        word="chapter",
+        definition="/ˈʧæptə/ <N>\n  rozdział"
+    ))
 
     return session
 
