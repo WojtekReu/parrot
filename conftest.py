@@ -195,7 +195,7 @@ async def create_tests_data(session):
         user1.id,
     )
     await flashcard_join_to_words(session, flashcard1.id, {word1.id})
-    flashcard2 = await create_flashcard(
+    await create_flashcard(
         session,
         FlashcardCreate(
             user_id=user1.id,
@@ -203,6 +203,16 @@ async def create_tests_data(session):
             translations=["tłumaczenie do aktualizacji"],
         ),
         user1.id,
+    )
+    await create_flashcard(
+        session,
+        FlashcardCreate(user_id=user2.id, keyword="well", translations=["studnia"]),
+        user2.id,
+    )
+    await create_flashcard(
+        session,
+        FlashcardCreate(user_id=user2.id, keyword="dwarf", translations=["krasnal"]),
+        user2.id,
     )
     await create_translation(session, Translation(
         word="chapter",

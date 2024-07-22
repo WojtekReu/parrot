@@ -25,6 +25,10 @@ async def owner(client):
     await client_logged_in(client, "jkowalski", "secret")
 
 
+async def owner2(client):
+    await client_logged_in(client, "anowak", "secret")
+
+
 @pytest.mark.asyncio
 class TestBookRouter(BaseTestRouter):
     router = api_router
@@ -223,6 +227,30 @@ class TestWordRouter(BaseTestRouter):
 
         assert result == expected
 
+    async def test_find_words(self, client):
+        response = await client.get(
+            "/api/v2/words/find/chapter",
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data == [
+            {
+                "count": 0,
+                "declination": {"NNS": "chapters"},
+                "definition": "test definition for chapter",
+                "id": 1,
+                "lem": "chapter",
+                "pos": "n",
+                "synset": None,
+            }
+        ]
+
+
+@pytest.mark.asyncio
+class TestFlashcardRouter(BaseTestRouter):
+    router = api_router
+
     async def test_get_flashcard(self, client):
         response = await client.get("/api/v2/flashcards/1")
         assert response.status_code == 200
@@ -293,24 +321,18 @@ class TestWordRouter(BaseTestRouter):
             }
         ]
 
-    async def test_find_words(self, client):
-        response = await client.get(
-            "/api/v2/words/find/chapter",
-        )
+
+@pytest.mark.asyncio
+class TestUserRouter(BaseTestRouter):
+    router = api_router
+
+    async def test_get_user_flashcards(self, client):
+        await owner2(client)
+        response = await client.get("/api/v2/users/flashcards")
         assert response.status_code == 200
 
-        data = response.json()
-        assert data == [
-            {
-                "count": 0,
-                "declination": {"NNS": "chapters"},
-                "definition": "test definition for chapter",
-                "id": 1,
-                "lem": "chapter",
-                "pos": "n",
-                "synset": None,
-            }
-        ]
+        data = [(f["keyword"], f["translations"]) for f in response.json()]
+        assert data == [("well", ["studnia"]), ("dwarf", ["krasnal"])]
 
 
 @pytest.mark.asyncio

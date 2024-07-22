@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
 from wing.crud.base import find_model
-from wing.models.user import User, UserCreate, UserFind, UserUpdate
+from wing.models.flashcard import Flashcard
+from wing.models.user import User, UserCreate, UserFind, UserUpdate, UserPublic
 from wing.models.token import Status
 
 
@@ -70,3 +71,11 @@ async def delete_user(session: AsyncSession, user_id: int, current_user) -> Stat
     response = await session.execute(query)
     await session.commit()
     return Status(message=f"Deleted user {user_id}")
+
+
+async def get_user_flashcards(
+    session: AsyncSession, current_user: UserPublic
+) -> ScalarResult[Flashcard]:
+    query = select(Flashcard).where(Flashcard.user_id == current_user.id)
+    response = await session.execute(query)
+    return response.scalars()

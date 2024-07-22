@@ -18,7 +18,13 @@ from wing.crud.sentence import (
     get_sentences_with_phrase,
 )
 from wing.crud.translation import create_translation, get_translation_by_word
-from wing.crud.user import create_user, get_user, get_user_by_email, get_user_by_username
+from wing.crud.user import (
+    create_user,
+    get_user,
+    get_user_by_email,
+    get_user_by_username,
+    get_user_flashcards,
+)
 from wing.crud.word import (
     create_word,
     delete_word,
@@ -66,6 +72,14 @@ async def test_get_user_by_email(session: AsyncSession):
 async def test_get_user_by_email_user_not_found(session: AsyncSession):
     result = await get_user_by_email(session, "zkapusta@example.com")
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_user_flashcards(session: AsyncSession):
+    user = await get_user_by_username(session, "anowak")
+    results = await get_user_flashcards(session, user)
+    flashcard_list = [(f.keyword, f.translations) for f in results]
+    assert flashcard_list == [("well", ["studnia"]), ("dwarf", ["krasnal"])]
 
 
 @pytest.mark.asyncio
