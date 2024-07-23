@@ -23,6 +23,7 @@ httpx = "*"
 py-dict-client = "*"
 python-jose = "*"
 passlib = "*"
+fastapi-pagination = "*"
 
 [dev-packages]
 pytest = "*"

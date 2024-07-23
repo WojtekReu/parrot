@@ -1,4 +1,6 @@
 from fastapi import HTTPException
+from fastapi_pagination import Page
+from fastapi_pagination.ext.sqlmodel import paginate
 from passlib.context import CryptContext
 from sqlalchemy import ScalarResult
 from sqlalchemy.exc import IntegrityError
@@ -75,7 +77,6 @@ async def delete_user(session: AsyncSession, user_id: int, current_user) -> Stat
 
 async def get_user_flashcards(
     session: AsyncSession, current_user: UserPublic
-) -> ScalarResult[Flashcard]:
+) -> Page[Flashcard]:
     query = select(Flashcard).where(Flashcard.user_id == current_user.id)
-    response = await session.execute(query)
-    return response.scalars()
+    return await paginate(session, query)

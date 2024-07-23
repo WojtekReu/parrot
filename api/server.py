@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_pagination import add_pagination
 
 from .routes import router as api_router
 from wing.config import settings
@@ -28,6 +29,7 @@ def get_application():
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    add_pagination(app)
     return app
 
 

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi_pagination import Page
 
 from wing.auth.jwthandler import get_current_user
 from wing.crud.user import create_user, get_user, get_user_flashcards, find_users
@@ -52,13 +53,13 @@ async def get_current_user_route(current_user: UserPublic = Depends(get_current_
     "/flashcards",
     summary="Get current user flashcards.",
     status_code=status.HTTP_200_OK,
-    response_model=list[Flashcard],
+    response_model=Page[Flashcard],
     dependencies=[Depends(get_current_user)],
 )
 async def get_user_flashcards_route(
     current_user: UserPublic = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
-):
+) -> Page[Flashcard]:
     return await get_user_flashcards(session=db, current_user=current_user)
 
 
