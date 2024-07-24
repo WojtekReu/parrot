@@ -41,17 +41,26 @@ class TestBookRouter(BaseTestRouter):
         response = await client.get("/api/v2/books/all")
         assert response.status_code == 200
         books = response.json()
-        assert len(books) == 2
-        book = {
-            "author": "Virginia Woolf",
-            "id": 2,
-            "is_public": True,
-            "sentences_count": 0,
-            "title": "To The Lighthouse",
-            "user_id": 1,
-            "words_count": 0,
-        }
-        assert book in books
+        assert books == [
+            {
+                "author": "Virginia Woolf",
+                'id': 1,
+                'is_public': True,
+                'sentences_count': 0,
+                'title': 'The Voyage Out',
+                'user_id': 1,
+                "words_count": 0,
+            },
+            {
+                "author": "Arthur Conan Doyle",
+                "id": 3,
+                "is_public": True,
+                "sentences_count": 0,
+                "title": "The Sign of the Four",
+                "user_id": 2,
+                "words_count": 0,
+            },
+        ]
 
     async def test_get_book(self, client):
         response = await client.get(f"/api/v2/books/1")
@@ -59,7 +68,7 @@ class TestBookRouter(BaseTestRouter):
         assert response.json() == {
             "author": "Virginia Woolf",
             "id": 1,
-            "is_public": False,
+            "is_public": True,
             "sentences_count": 0,
             "title": "The Voyage Out",
             "user_id": 1,
@@ -336,6 +345,39 @@ class TestUserRouter(BaseTestRouter):
             "items": [
                 {"id": 3, "keyword": "well", "translations": ["studnia"], "user_id": 2},
                 {"id": 4, "keyword": "dwarf", "translations": ["krasnal"], "user_id": 2},
+            ],
+            "page": 1,
+            "pages": 1,
+            "size": 50,
+            "total": 2,
+        }
+
+    async def test_get_user_books(self, client):
+        await client_anowak(client)
+        response = await client.get("/api/v2/users/books?page=1&size=100")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data == {
+            "items": [
+                {
+                    "author": "Virginia Woolf",
+                    "id": 2,
+                    "is_public": False,
+                    "sentences_count": 0,
+                    "title": "To The Lighthouse",
+                    "user_id": 2,
+                    "words_count": 0,
+                },
+                {
+                    "author": "Arthur Conan Doyle",
+                    "id": 3,
+                    "is_public": True,
+                    "sentences_count": 0,
+                    "title": "The Sign of the Four",
+                    "user_id": 2,
+                    "words_count": 0,
+                },
             ],
             "page": 1,
             "pages": 1,

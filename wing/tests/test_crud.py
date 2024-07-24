@@ -24,6 +24,7 @@ from wing.crud.user import (
     get_user_by_email,
     get_user_by_username,
     get_user_flashcards,
+    get_user_books,
 )
 from wing.crud.word import (
     create_word,
@@ -80,6 +81,17 @@ async def test_get_user_flashcards(session: AsyncSession):
     results = await get_user_flashcards(session, user)
     flashcard_list = [(f.keyword, f.translations) for f in results.items]
     assert flashcard_list == [("well", ["studnia"]), ("dwarf", ["krasnal"])]
+
+
+@pytest.mark.asyncio
+async def test_get_user_books(session: AsyncSession):
+    user = await get_user_by_username(session, "anowak")
+    results = await get_user_books(session, user)
+    book_list = [(f.author, f.title) for f in results.items]
+    assert book_list == [
+        ("Virginia Woolf", "To The Lighthouse"),
+        ("Arthur Conan Doyle", "The Sign of the Four"),
+    ]
 
 
 @pytest.mark.asyncio

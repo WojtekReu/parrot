@@ -97,6 +97,7 @@ async def create_tests_data(session):
         BookCreate(
             title="The Voyage Out",
             author="Virginia Woolf",
+            is_public=True,
         ),
         user1.id,
     )
@@ -105,9 +106,8 @@ async def create_tests_data(session):
         BookCreate(
             title="To The Lighthouse",
             author="Virginia Woolf",
-            is_public=True,
         ),
-        user1.id,
+        user2.id,
     )
     book3 = await create_book(
         session,
@@ -116,7 +116,7 @@ async def create_tests_data(session):
             author="Arthur Conan Doyle",
             is_public=True,
         ),
-        user1.id,
+        user2.id,
     )
     book4 = await create_book(
         session,
