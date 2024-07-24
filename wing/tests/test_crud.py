@@ -78,7 +78,7 @@ async def test_get_user_by_email_user_not_found(session: AsyncSession):
 async def test_get_user_flashcards(session: AsyncSession):
     user = await get_user_by_username(session, "anowak")
     results = await get_user_flashcards(session, user)
-    flashcard_list = [(f.keyword, f.translations) for f in results]
+    flashcard_list = [(f.keyword, f.translations) for f in results.items]
     assert flashcard_list == [("well", ["studnia"]), ("dwarf", ["krasnal"])]
 
 

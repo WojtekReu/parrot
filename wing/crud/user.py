@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 from fastapi_pagination import Page
+from fastapi_pagination.default import Params
 from fastapi_pagination.ext.sqlmodel import paginate
 from passlib.context import CryptContext
 from sqlalchemy import ScalarResult
@@ -12,6 +13,8 @@ from wing.models.flashcard import Flashcard
 from wing.models.user import User, UserCreate, UserFind, UserUpdate, UserPublic
 from wing.models.token import Status
 
+FLASHCARDS_PAGINATION_OFFSET = 1
+FLASHCARDS_PAGINATION_LIMIT = 100
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -75,8 +78,10 @@ async def delete_user(session: AsyncSession, user_id: int, current_user) -> Stat
     return Status(message=f"Deleted user {user_id}")
 
 
-async def get_user_flashcards(
-    session: AsyncSession, current_user: UserPublic
-) -> Page[Flashcard]:
+async def get_user_flashcards(session: AsyncSession, current_user: UserPublic) -> Page[Flashcard]:
     query = select(Flashcard).where(Flashcard.user_id == current_user.id)
-    return await paginate(session, query)
+    return await paginate(
+        session,
+        query,
+        Params(limit=FLASHCARDS_PAGINATION_LIMIT, offset=FLASHCARDS_PAGINATION_OFFSET),
+    )

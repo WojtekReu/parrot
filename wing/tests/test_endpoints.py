@@ -25,7 +25,7 @@ async def owner(client):
     await client_logged_in(client, "jkowalski", "secret")
 
 
-async def owner2(client):
+async def client_anowak(client):
     await client_logged_in(client, "anowak", "secret")
 
 
@@ -327,12 +327,21 @@ class TestUserRouter(BaseTestRouter):
     router = api_router
 
     async def test_get_user_flashcards(self, client):
-        await owner2(client)
-        response = await client.get("/api/v2/users/flashcards")
+        await client_anowak(client)
+        response = await client.get("/api/v2/users/flashcards?page=1&size=100")
         assert response.status_code == 200
 
-        data = [(f["keyword"], f["translations"]) for f in response.json()]
-        assert data == [("well", ["studnia"]), ("dwarf", ["krasnal"])]
+        data = response.json()
+        assert data == {
+            "items": [
+                {"id": 3, "keyword": "well", "translations": ["studnia"], "user_id": 2},
+                {"id": 4, "keyword": "dwarf", "translations": ["krasnal"], "user_id": 2},
+            ],
+            "page": 1,
+            "pages": 1,
+            "size": 50,
+            "total": 2,
+        }
 
 
 @pytest.mark.asyncio
