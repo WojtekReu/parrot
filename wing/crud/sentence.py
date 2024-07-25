@@ -4,30 +4,42 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select, distinct
 
+from wing.models.book import Book
+from wing.models.flashcard import Flashcard
 from wing.models.sentence import Sentence, SentenceCreate
 from wing.models.sentence_word import SentenceWord
 from wing.models.sentence_flashcard import SentenceFlashcard
 from wing.models.word import Word
 
 
-async def get_sentence(session: AsyncSession, sentence_id: int) -> Sentence:
+async def get_sentence(
+    session: AsyncSession, sentence_id: int, user_id: int | None = None
+) -> Sentence:
     query = select(Sentence).where(Sentence.id == sentence_id)
+    if user_id:
+        query = query.where(Sentence.book_id == Book.id).where(Book.user_id == user_id)
     response = await session.execute(query)
     return response.scalar_one_or_none()
 
 
 async def get_sentences_for_flashcard(
-    session: AsyncSession, book_id: int, flashcard_id: int
+    session: AsyncSession,
+    book_id: int,
+    flashcard_id: int,
+    user_id: int,
 ) -> ScalarResult[Sentence]:
     query = (
         select(Sentence)
         .join(SentenceFlashcard)
         .where(SentenceFlashcard.flashcard_id == flashcard_id)
         .where(Sentence.book_id == book_id)
+        .where(SentenceFlashcard.flashcard_id == flashcard_id)
+        .where(Flashcard.user_id == user_id)
         .order_by(Sentence.nr)
     )
     response = await session.execute(query)
     return response.scalars()
+
 
 async def get_sentence_ids(session: AsyncSession, word: Word, book_id: int) -> list[int]:
     query = (

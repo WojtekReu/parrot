@@ -42,9 +42,14 @@ async def create_sentence_route(
     summary="Get a sentence.",
     status_code=status.HTTP_200_OK,
     response_model=Sentence,
+    dependencies=[Depends(get_current_user)],
 )
-async def get_book_route(sentence_id: int, db: AsyncSession = Depends(get_session)):
-    sentence = await get_sentence(session=db, sentence_id=sentence_id)
+async def get_book_route(
+    sentence_id: int,
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    sentence = await get_sentence(session=db, sentence_id=sentence_id, user_id=current_user.id)
     if not sentence:
         raise HTTPException(status_code=404, detail="Sentence not found with the given ID")
     return sentence

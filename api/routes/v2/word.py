@@ -9,10 +9,10 @@ from wing.crud.word import (
     find_words,
     find_synset,
     get_word,
-    get_word_sentences,
     update_word,
-    word_join_to_sentences,
-    word_separate_sentences,
+    get_word_sentences_for_user,
+    word_separate_sentences_by_user,
+    word_join_to_sentences_by_user,
 )
 from wing.db.session import get_session
 from wing.models.sentence import Sentence
@@ -112,11 +112,14 @@ async def find_synset_route(
     summary="Get sentences related to word",
     status_code=status.HTTP_200_OK,
     response_model=list[Sentence],
+    dependencies=[Depends(get_current_user)],
 )
 async def get_word_sentences_route(
-    word_id: int, db: AsyncSession = Depends(get_session)
+    word_id: int,
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
 ) -> ScalarResult[Sentence]:
-    return await get_word_sentences(session=db, word_id=word_id)
+    return await get_word_sentences_for_user(session=db, word_id=word_id, user_id=current_user.id)
 
 
 @router.post(
@@ -133,5 +136,5 @@ async def match_word_sentences_route(
     current_user: UserPublic = Depends(get_current_user),
 ) -> None:
     if disconnect_ids:
-        await word_separate_sentences(db, word_id, disconnect_ids)
-    return await word_join_to_sentences(db, word_id, sentence_ids)
+        await word_separate_sentences_by_user(db, word_id, disconnect_ids, current_user.id)
+    return await word_join_to_sentences_by_user(db, word_id, sentence_ids, current_user.id)

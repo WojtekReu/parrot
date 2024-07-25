@@ -63,6 +63,7 @@ class TestBookRouter(BaseTestRouter):
         ]
 
     async def test_get_book(self, client):
+        await owner(client)
         response = await client.get(f"/api/v2/books/1")
         assert response.status_code == 200
         assert response.json() == {
@@ -128,9 +129,18 @@ class TestBookRouter(BaseTestRouter):
         assert response.status_code == 401
         assert response.json() == {"detail": "Not authenticated"}
 
+        await owner(client)
         get_response = await client.get(f"/api/v2/books/1")
         book = get_response.json()
-        assert book["id"] == 1
+        assert book == {
+            "author": "Virginia Woolf",
+            "id": 1,
+            "is_public": True,
+            "sentences_count": 0,
+            "title": "The Voyage Out",
+            "user_id": 1,
+            "words_count": 0,
+        }
 
 
 @pytest.mark.asyncio
@@ -261,6 +271,7 @@ class TestFlashcardRouter(BaseTestRouter):
     router = api_router
 
     async def test_get_flashcard(self, client):
+        await owner(client)
         response = await client.get("/api/v2/flashcards/1")
         assert response.status_code == 200
         assert response.json() == {

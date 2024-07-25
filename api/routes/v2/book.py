@@ -46,9 +46,14 @@ async def get_books_route(db: AsyncSession = Depends(get_session)):
     summary="Get a book.",
     status_code=status.HTTP_200_OK,
     response_model=Book,
+    dependencies=[Depends(get_current_user)],
 )
-async def get_book_route(book_id: int, db: AsyncSession = Depends(get_session)):
-    book = await get_book(session=db, book_id=book_id)
+async def get_book_route(
+    book_id: int,
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> Book:
+    book = await get_book(session=db, book_id=book_id, user_id=current_user.id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found with the given ID")
     return book
@@ -88,11 +93,20 @@ async def get_flashcard_ids_for_book_route(
     summary="Get sentences for book and flashcard.",
     status_code=status.HTTP_200_OK,
     response_model=list[Sentence],
+    dependencies=[Depends(get_current_user)],
 )
 async def get_sentences_for_flashcard_route(
-    book_id: int, flashcard_id: int, db: AsyncSession = Depends(get_session)
+    book_id: int,
+    flashcard_id: int,
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
 ):
-    return await get_sentences_for_flashcard(session=db, book_id=book_id, flashcard_id=flashcard_id)
+    return await get_sentences_for_flashcard(
+        session=db,
+        book_id=book_id,
+        flashcard_id=flashcard_id,
+        user_id=current_user.id,
+    )
 
 
 @router.put(

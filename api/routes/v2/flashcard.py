@@ -37,6 +37,7 @@ async def create_flashcard_route(
 ):
     return await create_flashcard(session=db, flashcard=data, user_id=current_user.id)
 
+
 @router.get(
     "/find/{keyword}",
     summary="Get flashcards by keyword",
@@ -57,11 +58,18 @@ async def find_flashcards_route(
     summary="Get a flashcard.",
     status_code=status.HTTP_200_OK,
     response_model=Flashcard,
+    dependencies=[Depends(get_current_user)],
 )
-async def get_flashcard_route(flashcard_id: int, db: AsyncSession = Depends(get_session)):
-    flashcard = await get_flashcard(session=db, flashcard_id=flashcard_id)
+async def get_flashcard_route(
+    flashcard_id: int,
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    flashcard = await get_flashcard(session=db, flashcard_id=flashcard_id, user_id=current_user.id)
     if flashcard is None:
-        raise HTTPException(status_code=404, detail="Flashcard not found with the given ID")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Flashcard not found with the given ID"
+        )
     return flashcard
 
 
@@ -81,7 +89,10 @@ async def match_flashcard_sentences_route(
     flashcard = get_flashcard(db, flashcard_id, current_user.id)
 
     if not flashcard:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Flashcard not found by id: {flashcard_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Flashcard not found by id: {flashcard_id}",
+        )
 
     if disconnect_ids:
         await flashcard_separate_sentences(db, flashcard_id, disconnect_ids)

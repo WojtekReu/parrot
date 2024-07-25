@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from sqlalchemy import ScalarResult
+from sqlalchemy import ScalarResult, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
@@ -11,7 +11,7 @@ from wing.models.book import Book, BookCreate, BookFind, BookUpdate
 async def get_book(session: AsyncSession, book_id: int, user_id: int | None = None) -> Book:
     query = select(Book).where(Book.id == book_id)
     if user_id:
-        query = query.where(Book.user_id == user_id)
+        query = query.where(or_(Book.user_id == user_id, Book.is_public == True))
     response = await session.execute(query)
     return response.scalar_one_or_none()
 

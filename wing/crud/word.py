@@ -6,6 +6,7 @@ from sqlmodel import delete, select
 
 from wing.crud.base import find_model, get_related_list, model_join_to_set, model_separate_list
 from wing.crud.sentence import get_sentence
+from wing.models.book import Book
 from wing.models.flashcard_word import FlashcardWord
 from wing.models.sentence import Sentence
 from wing.models.sentence_word import SentenceWord
@@ -71,6 +72,31 @@ async def word_join_to_sentences(session: AsyncSession, word_id: int, sentence_i
     )
 
 
+async def word_join_to_sentences_by_user(
+    session: AsyncSession,
+    word_id: int,
+    sentence_ids: set,
+    user_id: int
+) -> None:
+    for sentence_id in sentence_ids:
+        result = await session.execute(
+            select(SentenceWord)
+            .where(SentenceWord.word_id == word_id)
+            .where(SentenceWord.sentence_id == Sentence.id)
+            .where(Sentence.id == sentence_id)
+            .where(Sentence.book_id == Book.id)
+            .where(Book.user_id == user_id)
+        )
+        if not result.first():
+            relation_model_attrs = {
+                "word_id": word_id,
+                "sentence_id": sentence_id,
+            }
+            relation_object = SentenceWord(**relation_model_attrs)
+            session.add(relation_object)
+    await session.commit()
+
+
 async def delete_word(session: AsyncSession, word_id: int) -> int:
     query1 = delete(SentenceWord).where(SentenceWord.word_id == word_id)
     query2 = delete(FlashcardWord).where(FlashcardWord.word_id == word_id)
@@ -119,6 +145,23 @@ async def get_word_sentences(
     )
 
 
+async def get_word_sentences_for_user(
+    session: AsyncSession,
+    word_id: int,
+    user_id: int,
+) -> ScalarResult[Sentence]:
+    query = (
+        select(Sentence)
+        .where(Sentence.id == SentenceWord.sentence_id)
+        .where(SentenceWord.word_id == word_id)
+        .where(Sentence.book_id == Book.id)
+        .where(Book.user_id == user_id)
+        .order_by(Sentence.id)
+    )
+    response = await session.execute(query)
+    return response.scalars()
+
+
 async def find_synset(session: AsyncSession, word_id: int, sentence_id: int) -> dict:
     word = await get_word(session=session, word_id=word_id)
     if word:
@@ -143,6 +186,23 @@ async def word_separate_sentences(
         target_id_name="sentence_id",
         target_ids=sentence_ids,
     )
+
+
+async def word_separate_sentences_by_user(
+    session: AsyncSession,
+    word_id: int,
+    sentence_ids: set[int],
+    user_id: int,
+) -> Result:
+    query = (
+        delete(SentenceWord)
+        .where(SentenceWord.word_id == word_id)
+        .where(SentenceWord.sentence_id == Sentence.id)
+        .where(Sentence.book_id == Book.id)
+        .where(Book.user_id == user_id)
+        .where(SentenceWord.sentence_id.in_(sentence_ids))
+    )
+    return await session.execute(query)
 
 
 async def find_words_for_flashcard(
