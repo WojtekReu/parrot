@@ -44,11 +44,11 @@ class TestBookRouter(BaseTestRouter):
         assert books == [
             {
                 "author": "Virginia Woolf",
-                'id': 1,
-                'is_public': True,
-                'sentences_count': 0,
-                'title': 'The Voyage Out',
-                'user_id': 1,
+                "id": 1,
+                "is_public": True,
+                "sentences_count": 0,
+                "title": "The Voyage Out",
+                "user_id": 1,
                 "words_count": 0,
             },
             {
@@ -284,6 +284,21 @@ class TestFlashcardRouter(BaseTestRouter):
         assert data["keyword"] == "rickety"
         assert isinstance(data["id"], int)
 
+    async def test_find_flashcards(self, client):
+        await owner(client)
+        response = await client.get("/api/v2/flashcards/find/ambush")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data == [
+            {
+                "id": 2,
+                "keyword": "ambush",
+                "translations": ["zasadzka"],
+                "user_id": 1,
+            }
+        ]
+
     async def test_update_flashcard(self, client):
         await owner(client)
         response = await client.put(
@@ -343,8 +358,8 @@ class TestUserRouter(BaseTestRouter):
         data = response.json()
         assert data == {
             "items": [
-                {"id": 3, "keyword": "well", "translations": ["studnia"], "user_id": 2},
-                {"id": 4, "keyword": "dwarf", "translations": ["krasnal"], "user_id": 2},
+                {"id": 4, "keyword": "well", "translations": ["studnia"], "user_id": 2},
+                {"id": 5, "keyword": "dwarf", "translations": ["krasnal"], "user_id": 2},
             ],
             "page": 1,
             "pages": 1,

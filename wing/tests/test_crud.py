@@ -40,7 +40,7 @@ from wing.crud.word import (
     get_words,
 )
 from wing.models.book import Book, BookCreate, BookUpdate, BookFind
-from wing.models.flashcard import FlashcardCreate, FlashcardUpdate
+from wing.models.flashcard import FlashcardCreate, FlashcardUpdate, Flashcard
 from wing.models.sentence import SentenceCreate
 from wing.models.translation import Translation
 from wing.models.user import UserCreate, UserUpdate
@@ -481,6 +481,15 @@ async def test_get_flashcard_by_values(session: AsyncSession):
     for retrieved_flashcard in await get_flashcards_by_keyword(session, keyword=flashcard.keyword):
         translations.append(retrieved_flashcard.translations)
     assert translations == [["rakieta"]]
+
+
+@pytest.mark.asyncio
+async def test_get_flashcard_by_values_for_user(session: AsyncSession):
+    user = await get_user_by_username(session, "jkowalski")
+    flashcards = await get_flashcards_by_keyword(session, keyword="ambush", user_id=user.id)
+    assert list(flashcards) == [
+        Flashcard(translations=["zasadzka"], user_id=1, keyword="ambush", id=2)
+    ]
 
 
 @pytest.mark.asyncio

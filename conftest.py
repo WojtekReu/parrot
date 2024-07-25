@@ -194,6 +194,11 @@ async def create_tests_data(session):
         FlashcardCreate(user_id=user1.id, keyword="equivocal", translations=["dwuznaczny"]),
         user1.id,
     )
+    await create_flashcard(
+        session,
+        FlashcardCreate(user_id=user1.id, keyword="ambush", translations=["zasadzka"]),
+        user1.id,
+    )
     await flashcard_join_to_words(session, flashcard1.id, {word1.id})
     await create_flashcard(
         session,

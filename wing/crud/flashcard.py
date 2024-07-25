@@ -26,8 +26,14 @@ async def find_flashcards(session: AsyncSession, flashcard: FlashcardFind) -> Sc
     return await find_model(session=session, instance_filter=flashcard, model=Flashcard)
 
 
-async def get_flashcards_by_keyword(session: AsyncSession, keyword: str) -> ScalarResult[Flashcard]:
+async def get_flashcards_by_keyword(
+    session: AsyncSession,
+    keyword: str,
+    user_id: int | None = None
+) -> ScalarResult[Flashcard]:
     query = select(Flashcard).where(Flashcard.keyword == keyword)
+    if user_id:
+        query = query.where(Flashcard.user_id == user_id)
     response = await session.execute(query)
     return response.scalars()
 

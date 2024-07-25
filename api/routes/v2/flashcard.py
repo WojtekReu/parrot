@@ -10,6 +10,7 @@ from wing.crud.flashcard import (
     flashcard_separate_sentences,
     get_flashcard_words,
     update_flashcard,
+    get_flashcards_by_keyword,
 )
 from wing.db.session import get_session
 from wing.models.flashcard import Flashcard, FlashcardCreate, FlashcardUpdate
@@ -35,6 +36,20 @@ async def create_flashcard_route(
     current_user: UserPublic = Depends(get_current_user),
 ):
     return await create_flashcard(session=db, flashcard=data, user_id=current_user.id)
+
+@router.get(
+    "/find/{keyword}",
+    summary="Get flashcards by keyword",
+    status_code=status.HTTP_200_OK,
+    response_model=list[Flashcard],
+    dependencies=[Depends(get_current_user)],
+)
+async def find_flashcards_route(
+    keyword: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: UserPublic = Depends(get_current_user),
+) -> ScalarResult[Flashcard]:
+    return await get_flashcards_by_keyword(session=db, keyword=keyword, user_id=current_user.id)
 
 
 @router.get(
