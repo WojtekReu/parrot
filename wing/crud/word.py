@@ -166,10 +166,16 @@ async def find_synset(session: AsyncSession, word_id: int, sentence_id: int) -> 
     word = await get_word(session=session, word_id=word_id)
     if word:
         sentence = await get_sentence(session=session, sentence_id=sentence_id)
-        result = find_definition(word.lem, sentence.sentence)
+        synsets = error_message = ""
+        try:
+            result = find_definition(word.lem, sentence.sentence)
+            synsets = result["synsets"]
+        except ConnectionRefusedError as e:
+            error_message = str(e)
         response = {
             "word": word,
-            "synsets": result["synsets"],
+            "synsets": synsets,
+            "errorMessage": error_message,
         }
         return response
     return {}
