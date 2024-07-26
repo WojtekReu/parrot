@@ -30,10 +30,10 @@ async def get_sentences_for_flashcard(
 ) -> ScalarResult[Sentence]:
     query = (
         select(Sentence)
-        .join(SentenceFlashcard)
-        .where(SentenceFlashcard.flashcard_id == flashcard_id)
         .where(Sentence.book_id == book_id)
+        .where(SentenceFlashcard.sentence_id == Sentence.id)
         .where(SentenceFlashcard.flashcard_id == flashcard_id)
+        .where(SentenceFlashcard.flashcard_id == Flashcard.id)
         .where(Flashcard.user_id == user_id)
         .order_by(Sentence.nr)
     )

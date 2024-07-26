@@ -12,6 +12,7 @@ from wing.crud.flashcard import (
     get_flashcards_by_keyword,
     flashcard_join_to_sentences,
     update_flashcard,
+    get_flashcard,
 )
 from wing.crud.sentence import (
     create_sentence,
@@ -19,6 +20,7 @@ from wing.crud.sentence import (
     delete_sentence,
     delete_sentences_by_book,
     get_sentences_with_phrase,
+    get_sentences_for_flashcard,
 )
 from wing.crud.translation import create_translation, get_translation_by_word
 from wing.crud.user import (
@@ -211,6 +213,18 @@ async def test_get_sentence(session: AsyncSession):
     )
     received_sentence = await get_sentence(session, created_sentence.id)
     assert received_sentence == created_sentence
+
+
+@pytest.mark.asyncio
+async def test_get_sentences_for_flashcard(session: AsyncSession):
+    user = await get_user(session, 1)
+    book = await get_book(session, 1)
+    flashcard = await get_flashcard(session, 6)
+    sentences = list(await get_sentences_for_flashcard(session, book.id, flashcard.id, user.id))
+    expected_sentence = await get_sentence(session, 1)
+    assert sentences == [expected_sentence]
+
+
 
 
 @pytest.mark.asyncio
