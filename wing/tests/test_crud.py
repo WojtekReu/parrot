@@ -1,5 +1,8 @@
 from unittest.mock import patch
 
+from fastapi_pagination.default import Params
+from fastapi_pagination.ext.sqlmodel import paginate
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,6 +50,14 @@ from wing.models.user import UserCreate, UserUpdate
 from wing.models.word import Word, WordCreate, WordUpdate, WordFind
 
 
+async def paginate_mock(*args, **kwargs):
+    """
+    Add params with `limit` and `offset` to paginate method.
+    """
+    args = *args, Params(limit=10, offset=3)
+    return await paginate(*args)
+
+
 @pytest.mark.asyncio
 async def test_create_user(session: AsyncSession):
     created_user = await create_user(
@@ -75,6 +86,7 @@ async def test_get_user_by_email_user_not_found(session: AsyncSession):
     assert result is None
 
 
+@patch("wing.crud.user.paginate", paginate_mock)
 @pytest.mark.asyncio
 async def test_get_user_flashcards(session: AsyncSession):
     user = await get_user_by_username(session, "anowak")
@@ -83,6 +95,7 @@ async def test_get_user_flashcards(session: AsyncSession):
     assert flashcard_list == [("well", ["studnia"]), ("dwarf", ["krasnal"])]
 
 
+@patch("wing.crud.user.paginate", paginate_mock)
 @pytest.mark.asyncio
 async def test_get_user_books(session: AsyncSession):
     user = await get_user_by_username(session, "anowak")

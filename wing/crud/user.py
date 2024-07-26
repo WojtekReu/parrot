@@ -82,17 +82,9 @@ async def delete_user(session: AsyncSession, user_id: int, current_user) -> Stat
 
 async def get_user_flashcards(session: AsyncSession, current_user: UserPublic) -> Page[Flashcard]:
     query = select(Flashcard).where(Flashcard.user_id == current_user.id)
-    return await paginate(
-        session,
-        query,
-        Params(limit=FLASHCARDS_PAGINATION_LIMIT, offset=DEFAULT_PAGINATION_OFFSET),
-    )
+    return await paginate(session, query)
 
 
 async def get_user_books(session: AsyncSession, current_user: UserPublic) -> Page[Book]:
     query = select(Book).where(Book.user_id == current_user.id).order_by(Book.id)
-    return await paginate(
-        session,
-        query,
-        Params(limit=BOOKS_PAGINATION_LIMIT, offset=DEFAULT_PAGINATION_OFFSET),
-    )
+    return await paginate(session, query)

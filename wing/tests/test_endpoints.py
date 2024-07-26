@@ -363,7 +363,7 @@ class TestUserRouter(BaseTestRouter):
 
     async def test_get_user_flashcards(self, client):
         await client_anowak(client)
-        response = await client.get("/api/v2/users/flashcards?page=1&size=100")
+        response = await client.get("/api/v2/users/flashcards?page=1&size=10")
         assert response.status_code == 200
 
         data = response.json()
@@ -374,13 +374,13 @@ class TestUserRouter(BaseTestRouter):
             ],
             "page": 1,
             "pages": 1,
-            "size": 50,
+            "size": 10,
             "total": 2,
         }
 
     async def test_get_user_books(self, client):
         await client_anowak(client)
-        response = await client.get("/api/v2/users/books?page=1&size=100")
+        response = await client.get("/api/v2/users/books?page=1&size=20")
         assert response.status_code == 200
 
         data = response.json()
@@ -407,7 +407,7 @@ class TestUserRouter(BaseTestRouter):
             ],
             "page": 1,
             "pages": 1,
-            "size": 50,
+            "size": 20,
             "total": 2,
         }
 
