@@ -38,29 +38,35 @@ class TestBookRouter(BaseTestRouter):
         assert response.status_code == 200
 
     async def test_get_books(self, client):
-        response = await client.get("/api/v2/books/all")
+        response = await client.get("/api/v2/books/public?page=1&size=50")
         assert response.status_code == 200
         books = response.json()
-        assert books == [
-            {
-                "author": "Virginia Woolf",
-                "id": 1,
-                "is_public": True,
-                "sentences_count": 0,
-                "title": "The Voyage Out",
-                "user_id": 1,
-                "words_count": 0,
-            },
-            {
-                "author": "Arthur Conan Doyle",
-                "id": 3,
-                "is_public": True,
-                "sentences_count": 0,
-                "title": "The Sign of the Four",
-                "user_id": 2,
-                "words_count": 0,
-            },
-        ]
+        assert books == {
+            "items": [
+                {
+                    "author": "Virginia Woolf",
+                    "id": 1,
+                    "is_public": True,
+                    "sentences_count": 0,
+                    "title": "The Voyage Out",
+                    "user_id": 1,
+                    "words_count": 0,
+                },
+                {
+                    "author": "Arthur Conan Doyle",
+                    "id": 3,
+                    "is_public": True,
+                    "sentences_count": 0,
+                    "title": "The Sign of the Four",
+                    "user_id": 2,
+                    "words_count": 0,
+                },
+            ],
+            "page": 1,
+            "pages": 1,
+            "size": 50,
+            "total": 2,
+        }
 
     async def test_get_book(self, client):
         await owner(client)
@@ -229,6 +235,7 @@ class TestWordRouter(BaseTestRouter):
         result = response.json()
 
         expected = {
+            "errorMessage": "",
             "synsets": [
                 [False, "brooch.n.01", "a decorative pin worn by women"],
                 [True, "brooch.v.01", "fasten with or as if with a brooch"],

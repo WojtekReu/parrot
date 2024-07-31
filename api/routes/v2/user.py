@@ -3,9 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi_pagination import Page
 
 from wing.auth.jwthandler import get_current_user
-from wing.crud.user import create_user, get_user, get_user_flashcards, find_users, get_user_books
+from wing.crud.book import find_books
+from wing.crud.user import create_user, get_user, get_user_flashcards, find_users
 from wing.db.session import get_session
-from wing.models.book import Book
+from wing.models.book import Book, BookFind
 from wing.models.user import UserCreate, UserFind, UserPublic
 from wing.models.flashcard import Flashcard
 
@@ -76,7 +77,7 @@ async def get_user_books_route(
     current_user: UserPublic = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> Page[Book]:
-    return await get_user_books(session=db, current_user=current_user)
+    return await find_books(session=db, book=BookFind(user_id=current_user.id))
 
 
 @router.get(

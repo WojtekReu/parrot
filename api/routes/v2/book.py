@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi_pagination import Page
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from wing.auth.jwthandler import get_current_user
@@ -32,12 +33,12 @@ async def create_book_route(
 
 
 @router.get(
-    "/all",
-    summary="Get all books.",
+    "/public",
+    summary="Get public books.",
     status_code=status.HTTP_200_OK,
-    response_model=list[Book],
+    response_model=Page[Book],
 )
-async def get_books_route(db: AsyncSession = Depends(get_session)):
+async def get_books_route(db: AsyncSession = Depends(get_session)) -> Page[Book]:
     return await find_books(session=db, book=BookFind(is_public=True))
 
 
@@ -55,7 +56,9 @@ async def get_book_route(
 ) -> Book:
     book = await get_book(session=db, book_id=book_id, user_id=current_user.id)
     if not book:
-        raise HTTPException(status_code=404, detail="Book not found with the given ID")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found with the given ID"
+        )
     return book
 
 

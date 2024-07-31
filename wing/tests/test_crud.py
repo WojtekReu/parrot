@@ -29,7 +29,6 @@ from wing.crud.user import (
     get_user_by_email,
     get_user_by_username,
     get_user_flashcards,
-    get_user_books,
 )
 from wing.crud.word import (
     create_word,
@@ -97,11 +96,11 @@ async def test_get_user_flashcards(session: AsyncSession):
     assert flashcard_list == [("well", ["studnia"]), ("dwarf", ["krasnal"])]
 
 
-@patch("wing.crud.user.paginate", paginate_mock)
+@patch("wing.crud.book.paginate", paginate_mock)
 @pytest.mark.asyncio
 async def test_get_user_books(session: AsyncSession):
     user = await get_user_by_username(session, "anowak")
-    results = await get_user_books(session, user)
+    results = await find_books(session, BookFind(user_id=user.id))
     book_list = [(f.author, f.title) for f in results.items]
     assert book_list == [
         ("Virginia Woolf", "To The Lighthouse"),
@@ -131,28 +130,73 @@ async def test_get_book(session: AsyncSession):
     assert book.author == "Virginia Woolf"
 
 
+@patch("wing.crud.book.paginate", paginate_mock)
 @pytest.mark.asyncio
 async def test_find_books(session: AsyncSession):
-    books = [book for book in await find_books(session, BookFind())]
-    assert len(books) > 2
-    assert isinstance(books[0], Book)
-    assert "To The Lighthouse" in [book.title for book in books]
+    books = [book for book in await find_books(session, BookFind(is_public=True))]
+    assert books == [
+        (
+            "items",
+            [
+                Book(
+                    title="The Voyage Out",
+                    user_id=1,
+                    words_count=0,
+                    is_public=True,
+                    author="Virginia Woolf",
+                    sentences_count=0,
+                    id=1,
+                ),
+                Book(
+                    title="The Sign of the Four",
+                    user_id=2,
+                    words_count=0,
+                    is_public=True,
+                    author="Arthur Conan Doyle",
+                    sentences_count=0,
+                    id=3,
+                ),
+            ],
+        ),
+        ("total", 2),
+        ("page", 1),
+        ("size", 50),
+        ("pages", 1),
+    ]
 
 
+@patch("wing.crud.book.paginate", paginate_mock)
 @pytest.mark.asyncio
 async def test_find_books_by_title(session: AsyncSession):
     books = [book for book in await find_books(session, BookFind(title="The Sign of the Four"))]
-    assert isinstance(books[0], Book)
-    assert books[0].title == "The Sign of the Four"
-    assert len(books) == 1
+    assert books == [
+        (
+            "items",
+            [
+                Book(
+                    title="The Sign of the Four",
+                    user_id=2,
+                    words_count=0,
+                    is_public=True,
+                    author="Arthur Conan Doyle",
+                    sentences_count=0,
+                    id=3,
+                )
+            ],
+        ),
+        ("total", 1),
+        ("page", 1),
+        ("size", 50),
+        ("pages", 1),
+    ]
 
 
+@patch("wing.crud.book.paginate", paginate_mock)
 @pytest.mark.asyncio
 async def test_update_book(session: AsyncSession):
     user = await get_user_by_username(session, "jkowalski")
-    books = [
-        book for book in await find_books(session, BookFind(title="Some Title for Modification"))
-    ]
+    book_items = await find_books(session, BookFind(title="Some Title for Modification"))
+    books = [book for book in book_items.items]
     book = books[0]
     await update_book(
         session,
@@ -223,8 +267,6 @@ async def test_get_sentences_for_flashcard(session: AsyncSession):
     sentences = list(await get_sentences_for_flashcard(session, book.id, flashcard.id, user.id))
     expected_sentence = await get_sentence(session, 1)
     assert sentences == [expected_sentence]
-
-
 
 
 @pytest.mark.asyncio
@@ -559,6 +601,7 @@ async def test_find_synset(find_definition_mock, session: AsyncSession):
     result = await find_synset(session, word.id, sentence.id)
 
     expected = {
+        "errorMessage": "",
         "synsets": [
             [False, "brooch.n.01", "a decorative pin worn by women"],
             [True, "brooch.v.01", "fasten with or as if with a brooch"],

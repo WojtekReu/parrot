@@ -9,14 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
 from wing.crud.base import find_model
-from wing.models.book import Book
 from wing.models.flashcard import Flashcard
 from wing.models.user import User, UserCreate, UserFind, UserUpdate, UserPublic
 from wing.models.token import Status
-
-DEFAULT_PAGINATION_OFFSET = 1
-FLASHCARDS_PAGINATION_LIMIT = 100
-BOOKS_PAGINATION_LIMIT = 20
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -82,9 +77,4 @@ async def delete_user(session: AsyncSession, user_id: int, current_user) -> Stat
 
 async def get_user_flashcards(session: AsyncSession, current_user: UserPublic) -> Page[Flashcard]:
     query = select(Flashcard).where(Flashcard.user_id == current_user.id)
-    return await paginate(session, query)
-
-
-async def get_user_books(session: AsyncSession, current_user: UserPublic) -> Page[Book]:
-    query = select(Book).where(Book.user_id == current_user.id).order_by(Book.id)
     return await paginate(session, query)

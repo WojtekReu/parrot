@@ -23,7 +23,7 @@ class BookBase(BookCreate):
 class BookFind(BookBase):
     title: str | None = None
     author: str | None = None
-    user_id: str | None = None
+    user_id: int | None = None
 
 
 class Book(Base, BookBase, table=True):

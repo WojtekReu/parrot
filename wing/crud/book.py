@@ -1,10 +1,11 @@
 from fastapi import HTTPException, status
-from sqlalchemy import ScalarResult, or_
+from fastapi_pagination import Page
+from fastapi_pagination.ext.sqlmodel import paginate
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
-from wing.crud.base import find_model
 from wing.models.book import Book, BookCreate, BookFind, BookUpdate
 
 
@@ -16,8 +17,11 @@ async def get_book(session: AsyncSession, book_id: int, user_id: int | None = No
     return response.scalar_one_or_none()
 
 
-async def find_books(session: AsyncSession, book: BookFind) -> ScalarResult:
-    return await find_model(session=session, instance_filter=book, model=Book)
+async def find_books(session: AsyncSession, book: BookFind) -> Page[Book]:
+    query = select(Book).order_by(Book.id)
+    for attr_name, value in book.dict(exclude_unset=True).items():
+        query = query.where(getattr(Book, attr_name) == value)
+    return await paginate(session, query)
 
 
 async def create_book(session: AsyncSession, book: BookCreate, user_id: int) -> Book:
