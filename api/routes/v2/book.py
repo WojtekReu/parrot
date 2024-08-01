@@ -1,15 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile
 from fastapi_pagination import Page
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from wing.auth.jwthandler import get_current_user
 from wing.crud.book import create_book, find_books, get_book, update_book, delete_book
 from wing.crud.flashcard import get_flashcard_ids_for_book
-from wing.crud.sentence import get_sentences_for_flashcard
+from wing.crud.sentence import get_sentences_for_flashcard, count_sentences_for_book
+from wing.crud.word import count_words_for_book
 from wing.db.session import get_session
 from wing.models.book import Book, BookCreate, BookFind, BookUpdate
 from wing.models.sentence import Sentence
 from wing.models.user import UserPublic
+from wing.processing import load_sentences, save_prepared_words
 
 router = APIRouter(
     prefix="/books",
@@ -30,6 +32,38 @@ async def create_book_route(
     db: AsyncSession = Depends(get_session),
 ) -> Book:
     return await create_book(session=db, book=data, user_id=current_user.id)
+
+
+@router.post(
+    "/upload/{book_id}",
+    summary="Upload book content.",
+    status_code=status.HTTP_200_OK,
+    response_model=Book,
+    dependencies=[Depends(get_current_user)],
+)
+async def create_upload_file(
+    book_id: int,
+    file: UploadFile,
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    book = await get_book(db, book_id, current_user.id)
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found with the given ID"
+        )
+    data = (await file.read()).decode()
+
+    pos_collections = await load_sentences(db, data, book_id)
+
+    for dest in pos_collections:
+        await save_prepared_words(db, dest)
+
+    book.sentences_count = await count_sentences_for_book(db, book.id)
+    book.words_count = await count_words_for_book(db, book.id)
+    await update_book(db, book.id, current_user.id, BookUpdate(**book.dict()))
+
+    return book
 
 
 @router.get(

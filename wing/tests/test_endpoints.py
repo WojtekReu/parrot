@@ -6,6 +6,35 @@ from conftest import BaseTestRouter, DictionaryClientMock
 
 from api.routes.v2 import router as api_router
 
+BOOK_RAW = """As the streets that lead from the Strand to the Embankment are very narrow, it is
+better not to walk down them arm-in-arm. If you persist, lawyers’ clerks will have to make flying
+leaps into the mud; young lady typists will have to fidget behind you. In the streets of London
+where beauty goes unregarded, eccentricity must pay the penalty, and it is better not to be very
+tall, to wear a long blue cloak, or to beat the air with your left hand.
+One afternoon in the beginning of October when the traffic was becoming brisk a tall man strode
+along the edge of the pavement with a lady on his arm. Angry glances struck upon their backs. The
+small, agitated figures — for in comparison with this couple most people looked small — decorated
+with fountain pens, and burdened with despatch-boxes, had appointments to keep, and drew a weekly
+salary, so that there was some reason for the unfriendly stare which was bestowed upon Mr.
+Ambrose’s height and upon Mrs. Ambrose’s cloak. But some enchantment had put both man and woman
+beyond the reach of malice and unpopularity. In his case one might guess from the moving lips that
+it was thought; and in hers from the eyes fixed stonily straight in front of her at a level above
+the eyes of most that it was sorrow. It was only by scorning all she met that she kept herself from
+tears, and the friction of people brushing past her was evidently painful. After watching the
+traffic on the Embankment for a minute or two with a stoical gaze she twitched her husband’s
+sleeve, and they crossed between the swift discharge of motor cars. When they were safe on the
+further side, she gently withdrew her arm from his, allowing her mouth at the same time to relax,
+to tremble; then tears rolled down, and leaning her elbows on the balustrade, she shielded her
+face from the curious. Mr. Ambrose attempted consolation; he patted her shoulder; but she showed
+no signs of admitting him, and feeling it awkward to stand beside a grief that was greater than
+his, he crossed his arms behind him, and took a turn along the pavement.
+The embankment juts out in angles here and there, like pulpits; instead of preachers, however,
+small boys occupy them, dangling string, dropping pebbles, or launching wads of paper for a cruise.
+With their sharp eye for eccentricity, they were inclined to think Mr. Ambrose awful; but the
+quickest witted cried "Bluebeard!" as he passed. In case they should proceed to tease his wife, Mr.
+Ambrose flourished his stick at them, upon which they decided that he was grotesque merely, and
+four instead of one cried "Bluebeard!" in chorus."""
+
 
 async def client_logged_in(client, login, password):
     await client.post(
@@ -97,6 +126,25 @@ class TestBookRouter(BaseTestRouter):
         assert data["author"] == "Artur Conan Doyle"
         assert isinstance(data["id"], int)
 
+    async def test_upload_book(self, client):
+        await owner(client)
+        response = await client.post(
+            "/api/v2/books/upload/1",
+            files={"file": ("The_Voyage_Out.txt", BOOK_RAW.encode(), "text/plain")},
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data == {
+            "author": "Virginia Woolf",
+            "id": 1,
+            "is_public": True,
+            "sentences_count": 29,
+            "title": "The Voyage Out",
+            "user_id": 1,
+            "words_count": 201,
+        }
+
     async def test_update_book(self, client):
         await owner(client)
         response = await client.put(
@@ -138,15 +186,7 @@ class TestBookRouter(BaseTestRouter):
         await owner(client)
         get_response = await client.get(f"/api/v2/books/1")
         book = get_response.json()
-        assert book == {
-            "author": "Virginia Woolf",
-            "id": 1,
-            "is_public": True,
-            "sentences_count": 0,
-            "title": "The Voyage Out",
-            "user_id": 1,
-            "words_count": 0,
-        }
+        assert book.get("title") == "The Voyage Out"
 
 
 @pytest.mark.asyncio
