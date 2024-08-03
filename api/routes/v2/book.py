@@ -1,9 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile
 from fastapi_pagination import Page
+from sqlalchemy import ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from wing.auth.jwthandler import get_current_user
-from wing.crud.book import create_book, find_books, get_book, update_book, delete_book
+from wing.crud.book import (
+    create_book,
+    delete_book,
+    find_books,
+    get_book,
+    get_currently_reading,
+    set_currently_reading,
+    unset_currently_reading,
+    update_book,
+)
 from wing.crud.flashcard import get_flashcard_ids_for_book
 from wing.crud.sentence import get_sentences_for_flashcard, count_sentences_for_book
 from wing.crud.word import count_words_for_book
@@ -74,6 +84,40 @@ async def create_upload_file(
 )
 async def get_books_route(db: AsyncSession = Depends(get_session)) -> Page[Book]:
     return await find_books(session=db, book=BookFind(is_public=True))
+
+
+@router.get(
+    "/reading",
+    summary="Get all user reading books.",
+    status_code=status.HTTP_200_OK,
+    response_model=list[int],
+    dependencies=[Depends(get_current_user)],
+)
+async def get_currently_reading_route(
+    current_user: UserPublic = Depends(get_current_user), db: AsyncSession = Depends(get_session)
+) -> ScalarResult[int]:
+    response = await get_currently_reading(session=db, user_id=current_user.id)
+    return response
+
+
+@router.post(
+    "/reading",
+    summary="Set or unset currently reading book.",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(get_current_user)],
+)
+async def set_currently_reading_route(
+    data: dict[int, bool],
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> None:
+    for book_id, is_currently_reading in data.items():
+        if is_currently_reading:
+            book = await get_book(db, book_id)
+            if book.user_id == current_user.id or book.is_public:
+                await set_currently_reading(db, current_user.id, book_id)
+        else:
+            await unset_currently_reading(db, current_user.id, book_id)
 
 
 @router.get(

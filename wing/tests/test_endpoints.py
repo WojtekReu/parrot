@@ -188,6 +188,40 @@ class TestBookRouter(BaseTestRouter):
         book = get_response.json()
         assert book.get("title") == "The Voyage Out"
 
+    async def test_get_my_reading_books(self, client):
+        await owner(client)
+        response = await client.get(
+            "/api/v2/books/reading"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data == [1]
+
+    async def test_set_and_unset_currently_reading_book(self, client):
+        await owner(client)
+        book_id = 3
+        response = await client.post(
+            "/api/v2/books/reading",
+            json={
+                book_id: True,
+            }
+        )
+        assert response.status_code == 204
+
+        response = await client.get("/api/v2/books/reading")
+        assert response.json() == [1, book_id]
+
+        response = await client.post(  # unset currently reading book
+            "/api/v2/books/reading",
+            json={
+                book_id: False,
+            }
+        )
+        assert response.status_code == 204
+
+        response = await client.get("/api/v2/books/reading")
+        assert response.json() == [1]
+
 
 @pytest.mark.asyncio
 class TestWordRouter(BaseTestRouter):

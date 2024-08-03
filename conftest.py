@@ -14,7 +14,7 @@ from sqlmodel import SQLModel
 
 from api.server import app
 from wing.config import settings, assemble_db_connection
-from wing.crud.book import create_book
+from wing.crud.book import create_book, set_currently_reading
 from wing.crud.flashcard import (
     create_flashcard,
     flashcard_join_to_sentences,
@@ -105,6 +105,7 @@ async def create_tests_data(session):
         ),
         user1.id,
     )
+    await set_currently_reading(session, user1.id, book1.id)
     book2 = await create_book(
         session,
         BookCreate(

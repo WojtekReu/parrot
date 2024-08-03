@@ -31,3 +31,4 @@ class Book(Base, BookBase, table=True):
 
     user: User = Relationship(back_populates="books")
     sentences: list["Sentence"] = Relationship(back_populates="book")
+    currently_readings: list["CurrentlyReading"] = Relationship(back_populates="book")

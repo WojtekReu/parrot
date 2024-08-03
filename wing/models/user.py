@@ -54,3 +54,4 @@ class User(Base, UserDb, table=True):
 
     flashcards: list["Flashcard"] = Relationship(back_populates="user")
     books: list["Book"] = Relationship(back_populates="user")
+    currently_readings: list["CurrentlyReading"] = Relationship(back_populates="user")

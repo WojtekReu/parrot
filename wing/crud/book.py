@@ -1,12 +1,13 @@
 from fastapi import HTTPException, status
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlmodel import paginate
-from sqlalchemy import or_
+from sqlalchemy import or_, ScalarResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
 from wing.models.book import Book, BookCreate, BookFind, BookUpdate
+from wing.models.currently_reading import CurrentlyReading
 
 
 async def get_book(session: AsyncSession, book_id: int, user_id: int | None = None) -> Book:
@@ -64,3 +65,28 @@ async def delete_book(session: AsyncSession, book_id: int, user_id: int) -> int:
     response = await session.execute(query)
     await session.commit()
     return response.rowcount
+
+
+async def get_currently_reading(session: AsyncSession, user_id: int) -> ScalarResult[int]:
+    query = select(CurrentlyReading.book_id).where(CurrentlyReading.user_id == user_id)
+    response = await session.execute(query)
+    return response.scalars()
+
+
+async def set_currently_reading(session: AsyncSession, user_id: int, book_id: int) -> None:
+    session.add(CurrentlyReading(user_id=user_id, book_id=book_id))
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+
+
+async def unset_currently_reading(session: AsyncSession, user_id: int, book_id: int) -> None:
+    query = delete(CurrentlyReading).where(
+        CurrentlyReading.user_id == user_id, CurrentlyReading.book_id == book_id
+    )
+    try:
+        await session.execute(query)
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
