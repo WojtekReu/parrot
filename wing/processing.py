@@ -325,6 +325,9 @@ async def load_sentences(
 
     async for sentence in split_to_sentences(session, book_raw, book_id):
         for word_str, tag in nltk.pos_tag(nltk.word_tokenize(sentence.sentence)):
+            if 30 < len(word_str) and not word_str.isalpha():
+                continue
+
             if tag in ("NN", "NNP", "NNPS", "NNS"):
                 empty = bool(tag in ("NN", "NNP"))
                 pos = nltk.corpus.wordnet.NOUN  # n
