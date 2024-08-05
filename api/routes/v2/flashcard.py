@@ -11,6 +11,8 @@ from wing.crud.flashcard import (
     get_flashcard_words,
     update_flashcard,
     get_flashcards_by_keyword,
+    flashcard_join_to_words,
+    flashcard_separate_words,
 )
 from wing.db.session import get_session
 from wing.models.flashcard import Flashcard, FlashcardCreate, FlashcardUpdate
@@ -133,3 +135,29 @@ async def get_flashcard_words_route(
     if not flashcard:
         raise HTTPException(status_code=404, detail="Flashcard not found with the given ID")
     return await get_flashcard_words(session=db, flashcard_id=flashcard_id)
+
+
+@router.post(
+    "/{flashcard_id}/words",
+    summary="Update relation flashcard to words",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(get_current_user)],
+)
+async def set_flashcard_words_route(
+    flashcard_id: int,
+    disconnect_ids: set[int],
+    word_ids: set[int],
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> None:
+    flashcard = get_flashcard(db, flashcard_id, current_user.id)
+
+    if not flashcard:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Flashcard not found by id: {flashcard_id}",
+        )
+
+    if disconnect_ids:
+        await flashcard_separate_words(db, flashcard_id, disconnect_ids)
+    return await flashcard_join_to_words(db, flashcard_id, word_ids)

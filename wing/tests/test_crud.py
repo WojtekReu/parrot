@@ -13,6 +13,9 @@ from wing.crud.flashcard import (
     flashcard_join_to_sentences,
     update_flashcard,
     get_flashcard,
+    flashcard_join_to_words,
+    get_flashcard_words,
+    flashcard_separate_words,
 )
 from wing.crud.sentence import (
     create_sentence,
@@ -45,7 +48,7 @@ from wing.crud.word import (
 )
 from wing.models.book import Book, BookCreate, BookUpdate, BookFind
 from wing.models.flashcard import FlashcardCreate, FlashcardUpdate, Flashcard
-from wing.models.sentence import SentenceCreate
+from wing.models.sentence import SentenceCreate, Sentence
 from wing.models.translation import Translation
 from wing.models.user import UserCreate, UserUpdate
 from wing.models.word import Word, WordCreate, WordUpdate, WordFind
@@ -323,6 +326,52 @@ async def test_flashcard_join_to_sentence(session: AsyncSession):
         user.id,
     )
     await flashcard_join_to_sentences(session, flashcard.id, sentence_ids)
+
+    sentences = list(await get_sentences_for_flashcard(session, book.id, flashcard.id, user.id))
+    assert sentences == [
+        Sentence(
+            book_id=1,
+            id=8,
+            nr=0,
+            sentence="The two horses had just lain down when a brood of ducklings",
+        ),
+        Sentence(book_id=1, id=9, nr=1, sentence="She had protected the lost brood of ducklings."),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_flashcard_join_to_words(session: AsyncSession):
+    user = await get_user(session, 1)
+    flashcard = await create_flashcard(
+        session,
+        FlashcardCreate(
+            user_id=user.id,
+            keyword="he possessed disciplines",
+            translation=["posiadał dyscyplinę"],
+        ),
+        user.id,
+    )
+    word1 = await create_word(session, WordCreate(pos="v", lem="possess"))
+    word2 = await create_word(session, WordCreate(pos="n", lem="discipline"))
+    word_ids = {word1.id, word2.id}
+    await flashcard_join_to_words(session, flashcard.id, word_ids)
+
+    words = list(await get_flashcard_words(session, flashcard.id))
+
+    assert words == [
+        Word(lem="possess", definition=None, synset=None, count=0, pos="v", declination={}, id=5),
+        Word(
+            lem="discipline", definition=None, synset=None, count=0, pos="n", declination={}, id=6
+        ),
+    ]
+
+    await flashcard_separate_words(session, flashcard.id, {word2.id})
+
+    words = list(await get_flashcard_words(session, flashcard.id))
+
+    assert words == [
+        Word(lem="possess", definition=None, synset=None, pos="v", count=0, declination={}, id=5)
+    ]
 
 
 @pytest.mark.asyncio

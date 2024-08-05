@@ -190,9 +190,7 @@ class TestBookRouter(BaseTestRouter):
 
     async def test_get_my_reading_books(self, client):
         await owner(client)
-        response = await client.get(
-            "/api/v2/books/reading"
-        )
+        response = await client.get("/api/v2/books/reading")
         assert response.status_code == 200
         data = response.json()
         assert data == [1]
@@ -204,7 +202,7 @@ class TestBookRouter(BaseTestRouter):
             "/api/v2/books/reading",
             json={
                 book_id: True,
-            }
+            },
         )
         assert response.status_code == 204
 
@@ -215,7 +213,7 @@ class TestBookRouter(BaseTestRouter):
             "/api/v2/books/reading",
             json={
                 book_id: False,
-            }
+            },
         )
         assert response.status_code == 204
 
@@ -416,6 +414,47 @@ class TestFlashcardRouter(BaseTestRouter):
             },
         )
         assert response.status_code == 204
+
+        response2 = await client.get("/api/v2/books/1/flashcards/1/sentences")
+        assert response2.status_code == 200
+        data = response2.json()
+
+        assert data == [
+            {
+                "book_id": 1,
+                "id": 1,
+                "nr": 1,
+                "sentence": "Words of two or three syllables, with the stress distributed "
+                "equally between the first syllable and the last.",
+            }
+        ]
+
+    async def test_flashcard_join_to_words(self, client):
+        await owner(client)
+        response = await client.post(
+            "/api/v2/flashcards/1/words",
+            json={
+                "disconnect_ids": [],
+                "word_ids": [1],
+            },
+        )
+        assert response.status_code == 204
+
+        response2 = await client.get("/api/v2/flashcards/1/words")
+        assert response2.status_code == 200
+        data = response2.json()
+
+        assert data == [
+            {
+                "count": 0,
+                "declination": {"NNS": "chapters"},
+                "definition": "test definition for chapter",
+                "id": 1,
+                "lem": "chapter",
+                "pos": "n",
+                "synset": None,
+            }
+        ]
 
     async def test_flashcard_get_words(self, client):
         await owner(client)

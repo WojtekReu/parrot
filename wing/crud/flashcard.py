@@ -27,9 +27,7 @@ async def find_flashcards(session: AsyncSession, flashcard: FlashcardFind) -> Sc
 
 
 async def get_flashcards_by_keyword(
-    session: AsyncSession,
-    keyword: str,
-    user_id: int | None = None
+    session: AsyncSession, keyword: str, user_id: int | None = None
 ) -> ScalarResult[Flashcard]:
     query = select(Flashcard).where(Flashcard.keyword == keyword)
     if user_id:
@@ -153,4 +151,17 @@ async def flashcard_separate_sentences(
         source_id=flashcard_id,
         target_id_name="sentence_id",
         target_ids=sentence_ids,
+    )
+
+
+async def flashcard_separate_words(
+    session: AsyncSession, flashcard_id: int, word_ids: set[int]
+) -> Result:
+    return await model_separate_list(
+        session=session,
+        relation_model=FlashcardWord,
+        source_id_name="flashcard_id",
+        source_id=flashcard_id,
+        target_id_name="word_id",
+        target_ids=word_ids,
     )
