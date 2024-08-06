@@ -1,11 +1,13 @@
 services:
   db:
     image: postgres:15
+    volumes:
+      - db-data:/var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     environment:
-      - "POSTGRES_PASSWORD=postgres"
-#      - "POSTGRES_HOST_AUTH_METHOD=trust"
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    env_file: .env
   web:
     build: .
     command: sh entrypoint-web.sh
@@ -17,13 +19,7 @@ services:
       - db
       - dict
       - vocabulary
-    environment:
-      - "POSTGRES_HOST=db"
-      - "POSTGRES_DBNAME=postgres"
-      - "POSTGRES_PORT=5432"
-      - "POSTGRES_USER=postgres"
-      - "POSTGRES_PASSWORD=postgres"
-    env_file: ./secrets.env
+    env_file: .env
     restart: unless-stopped
 
   dict:
@@ -33,6 +29,9 @@ services:
   vocabulary:
     build: .
     command: sh entrypoint-vocabulary.sh
+
+volumes:
+  db-data:
 
 networks:
   bridge:

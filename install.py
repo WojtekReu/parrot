@@ -7,7 +7,7 @@ import os
 from dotenv import load_dotenv
 import nltk
 
-load_dotenv("./docker.env")
+load_dotenv("./.env")
 
 NLTK_DATA_PREFIX = os.environ["NLTK_DATA_PREFIX"]
 

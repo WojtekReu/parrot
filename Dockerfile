@@ -18,11 +18,11 @@ COPY ./Pipfile.lock /app
 
 RUN pipenv sync --system --clear
 
-COPY ./docker.env /app
 COPY ./install.py /app
+COPY ./.env /app
 
 RUN /usr/bin/env python3 install.py
 
 COPY . /app
 
-CMD ["python3", "-m", "uvicorn", "api.server:app", "--port=8000", "--host=0.0.0.0"]
+CMD ["./entrypoint-web.sh"]

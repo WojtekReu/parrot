@@ -4,7 +4,7 @@ from typing import Any
 from pydantic import Field, PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DOTENV_FILE = Path("docker.env")  # .env file in main project directory: parrot/.env
+DOTENV_FILE = Path(".env")  # .env file in main project directory: parrot/.env
 
 
 class Settings(BaseSettings):
@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int | str = Field("5432", env="POSTGRES_PORT")
     POSTGRES_ECHO: bool = Field(False, env="POSTGRES_ECHO")
     POSTGRES_POOL_SIZE: int = Field(10, env="POSTGRES_POOL_SIZE")
+    POSTGRES_URI: str = Field("", env="POSTGRES_URI")
     ASYNC_POSTGRES_URI: PostgresDsn | None = None
     # configs for external tools:
     # Url to pons dictionary API
@@ -58,4 +59,7 @@ def assemble_db_connection(v: str | None = None, values: dict[str, Any] = None) 
 
 
 settings = Settings()
-settings.ASYNC_POSTGRES_URI = assemble_db_connection(values=settings.dict())
+if settings.POSTGRES_URI:
+    settings.ASYNC_POSTGRES_URI = assemble_db_connection(v=settings.POSTGRES_URI)
+else:
+    settings.ASYNC_POSTGRES_URI = assemble_db_connection(values=settings.dict())
