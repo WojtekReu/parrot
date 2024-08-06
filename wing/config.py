@@ -4,7 +4,7 @@ from typing import Any
 from pydantic import Field, PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DOTENV_FILE = Path(".env")  # .env file in main project directory: parrot/.env
+DOTENV_FILE = Path("docker.env")  # .env file in main project directory: parrot/.env
 
 
 class Settings(BaseSettings):

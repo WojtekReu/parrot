@@ -2,23 +2,27 @@ FROM python:3-bookworm
 
 WORKDIR /app
 
-COPY . /app
-
 RUN set -eux; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
 		dictd \
-        dict-freedict-eng-pol
+        dict-freedict-eng-pol; \
+    apt-get clean;
 
 COPY dictd.conf /etc/dictd/dictd.conf
 
-RUN pip install --no-cache pipenv
+RUN pip install --no-cache-dir pipenv
 
-#RUN pipenv sync
+COPY ./Pipfile /app
+COPY ./Pipfile.lock /app
 
-#RUN pip install uvicorn fastapi
-RUN LANG=C.UTF-8 LC_ALL=C.UTF-8 pipenv install --system --ignore-pipfile --deploy --clear
+RUN pipenv sync --system --clear
 
-RUN python3 install.py
+COPY ./docker.env /app
+COPY ./install.py /app
 
-CMD ["python3","-m", "uvicorn", "api.server:app", "--port=8000", "--host=0.0.0.0"]
+RUN /usr/bin/env python3 install.py
+
+COPY . /app
+
+CMD ["python3", "-m", "uvicorn", "api.server:app", "--port=8000", "--host=0.0.0.0"]

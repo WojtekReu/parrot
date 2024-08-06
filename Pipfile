@@ -24,6 +24,7 @@ py-dict-client = "*"
 python-jose = "*"
 passlib = "*"
 fastapi-pagination = "*"
+python-multipart = "*"
 
 [dev-packages]
 pytest = "*"

@@ -2,13 +2,18 @@
 """
 Run downloader for nltk and install packages: dolch, punkt, averaged_perceptron_tagger, wordnet.
 """
-from wing.config import settings
+import os
 
+from dotenv import load_dotenv
 import nltk
 
-nltk.download("dolch", download_dir=settings.NLTK_DATA_PREFIX)  # Dolch word list
-nltk.download("punkt", download_dir=settings.NLTK_DATA_PREFIX)  # Punkt Tokenizer Models
+load_dotenv("./docker.env")
+
+NLTK_DATA_PREFIX = os.environ["NLTK_DATA_PREFIX"]
+
+nltk.download("dolch", download_dir=NLTK_DATA_PREFIX)  # Dolch word list
+nltk.download("punkt", download_dir=NLTK_DATA_PREFIX)  # Punkt Tokenizer Models
 nltk.download(
-    "averaged_perceptron_tagger", download_dir=settings.NLTK_DATA_PREFIX
+    "averaged_perceptron_tagger", download_dir=NLTK_DATA_PREFIX
 )  # Averaged Perceptron Tagger
-nltk.download("wordnet", download_dir=settings.NLTK_DATA_PREFIX)  # A Lexical Database for English
+nltk.download("wordnet", download_dir=NLTK_DATA_PREFIX)  # A Lexical Database for English
