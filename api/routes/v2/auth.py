@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from wing.auth.user import validate_user
 from wing.auth.jwthandler import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from wing.config import settings
 from wing.db.session import get_session
 from wing.models.user import UserPublic
 
@@ -41,12 +42,13 @@ async def login_route(
     response = JSONResponse(content=content)
     response.set_cookie(
         "Authorization",
+        domain=settings.PROJECT_DOMAIN,
+        expires=86400,
+        httponly=True,  # For third-part cookie set httponly=True
+        max_age=86400,
+        samesite="lax",  # For third-part cookie set samesite="none"
+        secure=settings.SSL_ENABLED,  # For third-part cookie set secure=True
         value=f"Bearer {token}",
-        httponly=True,
-        max_age=1800,
-        expires=1800,
-        samesite="lax",
-        secure=False,
     )
 
     return response
@@ -63,10 +65,10 @@ async def logout_route():
     response = JSONResponse(content=content)
     response.set_cookie(
         "Authorization",
-        value="",
+        expires=1,
         httponly=True,
         max_age=1,
-        expires=1,
+        value="",
     )
 
     return response

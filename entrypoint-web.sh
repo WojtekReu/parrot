@@ -1,6 +1,6 @@
 #!/bin/sh
 echo "Sleep 3 seconds and run alembic on database"
-sleep 3
+#sleep 3
 alembic upgrade head
 
 echo "Running uvicorn on api server"

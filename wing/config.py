@@ -8,8 +8,14 @@ DOTENV_FILE = Path(".env")  # .env file in main project directory: parrot/.env
 
 
 class Settings(BaseSettings):
-    VERSION: str = Field("0.0.1")
+    VERSION: str = Field("0.0.2")
     PROJECT_NAME: str = Field("Flashcards for books")
+    # API should use subdomain for PROJECT_DOMAIN ex. for example.com API should be api.example.com
+    PROJECT_DOMAIN: str = Field("localhost", env="PROJECT_DOMAIN")
+    # This is for development environment, ex. localhost:8000
+    PROJECT_DOMAIN_PORT: int | None = Field(None, env="PROJECT_DOMAIN_PORT")
+    ENVIRONMENT_TYPE: str = Field("dev", env="ENVIRONMENT_TYPE")
+    SSL_ENABLED: bool = Field(False, env="SSL_ENABLED")
     SECRET_KEY: str | None = Field(None, env="SECRET_KEY")
     POSTGRES_USER: str = Field("postgres", env="POSTGRES_USER")
     POSTGRES_PASSWORD: str = Field("postgres", env="POSTGRES_PASSWORD")
@@ -29,7 +35,11 @@ class Settings(BaseSettings):
     # Secret key for PONS dictionary
     PONS_SECRET_KEY: str = Field("", env="PONS_SECRET_KEY")
     API_LOGS_PATH: str = Field("pons_api.log", env="API_LOGS_PATH")
+
+    # NLTK storage directory path configuration
     NLTK_DATA_PREFIX: str = Field("/usr/local/share/nltk_data", env="NLTK_DATA_PREFIX")
+
+    # Configuration vocabulary container
     VOCABULARY_HOST: str = Field("parrot-vocabulary-1", env="VOCABULARY_HOST")
     VOCABULARY_PORT: int = Field(2630, env="VOCABULARY_PORT")
     VOCABULARY_BASE: str = Field("vocabulary.pkl", env="VOCABULARY_BASE")

@@ -8,10 +8,9 @@ from wing.models import *
 
 
 origins = [
-    "http://localhost:8080",
-    "http://localhost:3000",
-    "http://192.168.5.233:8080",
-    "http://192.168.5.233:3000",
+    ("https://" if settings.SSL_ENABLED else "http://")
+    + settings.PROJECT_DOMAIN
+    + (f":{settings.PROJECT_DOMAIN_PORT}" if settings.PROJECT_DOMAIN_PORT else "")
 ]
 
 
