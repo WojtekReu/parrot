@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     POSTGRES_POOL_SIZE: int = Field(10, env="POSTGRES_POOL_SIZE")
     POSTGRES_URI: str = Field("", env="POSTGRES_URI")
     ASYNC_POSTGRES_URI: PostgresDsn | None = None
+
+    # minutes after which the user will be logged out
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(1440, env="ACCESS_TOKEN_EXPIRE_MINUTES")
+
     # configs for external tools:
     # Url to pons dictionary API
     API_URL: str = Field("https://api.pons.com/v1/dictionary", env="API_URL")
