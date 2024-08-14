@@ -33,6 +33,7 @@ from wing.models.user import UserCreate
 from wing.db.session import get_session
 
 settings.POSTGRES_DBNAME = "parrotdb_test"
+settings.PROJECT_DOMAIN = None
 ENGINE_URL = str(assemble_db_connection(values=settings.dict()))
 
 
