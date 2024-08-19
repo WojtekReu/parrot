@@ -32,6 +32,7 @@ from wing.crud.user import (
     get_user_by_email,
     get_user_by_username,
     get_user_flashcards,
+    update_user,
 )
 from wing.crud.word import (
     create_word,
@@ -74,6 +75,28 @@ async def test_create_user(session: AsyncSession):
     )
     assert created_user.id is not None
     assert created_user.username == "zkowalski"
+
+
+@pytest.mark.asyncio
+async def test_update_user(session: AsyncSession):
+    created_user = await create_user(
+        session,
+        UserCreate(
+            username="ukowalska",
+            password="secret-password",
+            email="ukowalska@example.com",
+        ),
+    )
+    updated_user = await update_user(
+        session=session,
+        user_id=created_user.id,
+        user=UserUpdate(
+            first_name="Urszula",
+            last_name="Kowalska",
+        ),
+    )
+    assert updated_user.first_name == "Urszula"
+    assert updated_user.last_name == "Kowalska"
 
 
 @pytest.mark.asyncio

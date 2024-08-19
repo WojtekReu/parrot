@@ -4,7 +4,12 @@ from sqlmodel import AutoString, Field, Relationship, SQLModel
 from .base import Base
 
 
-class UserBase(SQLModel):
+class UserUpdate(SQLModel):
+    first_name: str
+    last_name: str
+
+
+class UserBase(UserUpdate):
     username: str = Field(
         nullable=False,
         index=True,
@@ -28,11 +33,11 @@ class UserRestricted(UserPublic):
 
 
 class UserDb(UserRestricted):
-    password: str | None = None
+    password: str
 
 
 class UserCreate(UserBase):
-    password: str | None = None
+    password: str
     email: EmailStr
     is_active: bool = True
 
@@ -42,11 +47,6 @@ class UserFind(UserBase):
     password: None = None
     email: EmailStr | None = None
     is_active: bool | None = None
-
-
-class UserUpdate(UserBase):
-    first_name: str = None
-    last_name: str = None
 
 
 class User(Base, UserDb, table=True):

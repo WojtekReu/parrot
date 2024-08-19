@@ -481,6 +481,58 @@ class TestFlashcardRouter(BaseTestRouter):
 class TestUserRouter(BaseTestRouter):
     router = api_router
 
+    async def test_create_user(self, client):
+        response = await client.post(
+            "/api/v2/users/",
+            json={
+                "username": "mkowalski",
+                "first_name": "Marian",
+                "last_name": "Kowalski",
+                "password": "secret-pasword",
+                "email": "mkowalski@example.com",
+                "is_active": True,
+            },
+        )
+        assert response.status_code == 201
+
+        data = response.json()
+        assert data["username"] == "mkowalski"
+        assert data["first_name"] == "Marian"
+        assert data["last_name"] == "Kowalski"
+        assert isinstance(data["id"], int)
+
+    async def test_get_logged_user(self, client):
+        await client_anowak(client)
+        response = await client.get("/api/v2/users/whoami")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data == {
+            "id": 2,
+            "first_name": None,
+            "last_name": None,
+            "username": "anowak",
+        }
+
+    async def test_search_user(self, client):
+        response = await client.post(
+            "/api/v2/users/search",
+            json={
+                "username": "anowak",
+            },
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data == [
+            {
+                "id": 2,
+                "first_name": None,
+                "last_name": None,
+                "username": "anowak",
+            }
+        ]
+
     async def test_get_user_flashcards(self, client):
         await client_anowak(client)
         response = await client.get("/api/v2/users/flashcards?page=1&size=10")
@@ -529,6 +581,18 @@ class TestUserRouter(BaseTestRouter):
             "pages": 1,
             "size": 20,
             "total": 2,
+        }
+
+    async def test_get_user(self, client):
+        response = await client.get("/api/v2/users/1")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data == {
+            "id": 1,
+            "first_name": None,
+            "last_name": None,
+            "username": "jkowalski",
         }
 
 
