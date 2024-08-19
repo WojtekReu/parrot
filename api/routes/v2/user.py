@@ -4,10 +4,10 @@ from fastapi_pagination import Page
 
 from wing.auth.jwthandler import get_current_user
 from wing.crud.book import find_books
-from wing.crud.user import create_user, get_user, get_user_flashcards, find_users
+from wing.crud.user import create_user, get_user, get_user_flashcards, find_users, update_user
 from wing.db.session import get_session
 from wing.models.book import Book, BookFind
-from wing.models.user import UserCreate, UserFind, UserPublic
+from wing.models.user import UserCreate, UserFind, UserPublic, UserUpdate
 from wing.models.flashcard import Flashcard
 
 
@@ -65,7 +65,6 @@ async def get_user_flashcards_route(
     return await get_user_flashcards(session=db, current_user=current_user)
 
 
-
 @router.get(
     "/books",
     summary="Get current user books.",
@@ -93,3 +92,21 @@ async def get_user_route(user_id: int, db: AsyncSession = Depends(get_session)):
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found with the given ID"
         )
     return user
+
+
+@router.put(
+    "/{user_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=UserPublic,
+    dependencies=[Depends(get_current_user)],
+)
+async def update_user_route(
+    user: UserUpdate,
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    return await update_user(
+        session=db,
+        user_id=current_user.id,
+        user=user,
+    )

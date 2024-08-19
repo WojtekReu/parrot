@@ -595,6 +595,22 @@ class TestUserRouter(BaseTestRouter):
             "username": "jkowalski",
         }
 
+    async def test_update_user(self, client):
+        await client_logged_in(client, "ChangeMe", "old-secret")
+        response = await client.put(
+            "/api/v2/users/3",
+            json={
+                "first_name": "Bonifacy",
+                "last_name": "Kupicki",
+            },
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["first_name"] == "Bonifacy"
+        assert data["last_name"] == "Kupicki"
+        assert isinstance(data["id"], int)
+
 
 @pytest.mark.asyncio
 @patch("wing.dictionary.DictionaryClient", new=DictionaryClientMock)

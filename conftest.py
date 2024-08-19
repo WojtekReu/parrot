@@ -97,6 +97,14 @@ async def create_tests_data(session):
             email="anowak@example.com",
         ),
     )
+    user3 = await create_user(
+        session,
+        UserCreate(
+            username="ChangeMe",
+            password="old-secret",
+            email="old.email@example.com",
+        )
+    )
     book1 = await create_book(
         session,
         BookCreate(
