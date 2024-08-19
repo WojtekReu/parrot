@@ -91,10 +91,12 @@ async def test_update_user(session: AsyncSession):
         session=session,
         user_id=created_user.id,
         user=UserUpdate(
+            username="ukowalska",
             first_name="Urszula",
             last_name="Kowalska",
         ),
     )
+    assert updated_user.username == "ukowalska"
     assert updated_user.first_name == "Urszula"
     assert updated_user.last_name == "Kowalska"
 

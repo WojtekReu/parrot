@@ -4,12 +4,7 @@ from sqlmodel import AutoString, Field, Relationship, SQLModel
 from .base import Base
 
 
-class UserUpdate(SQLModel):
-    first_name: str
-    last_name: str
-
-
-class UserBase(UserUpdate):
+class UserBase(SQLModel):
     username: str = Field(
         nullable=False,
         index=True,
@@ -17,6 +12,10 @@ class UserBase(UserUpdate):
     )
     first_name: str | None = None
     last_name: str | None = None
+
+
+class UserUpdate(UserBase):
+    ...
 
 class UserPublic(UserBase):
     id: int

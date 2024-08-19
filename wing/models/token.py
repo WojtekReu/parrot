@@ -2,7 +2,7 @@ from sqlmodel import SQLModel
 
 
 class TokenData(SQLModel):
-    username: str | None = None
+    user_id: int
 
 
 class Status(SQLModel):

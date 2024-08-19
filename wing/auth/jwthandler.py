@@ -9,7 +9,7 @@ from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from wing.config import settings
-from ..crud.user import get_user_by_username
+from ..crud.user import get_user
 from ..db.session import get_session
 from ..models.token import TokenData
 from ..models.user import UserPublic
@@ -78,14 +78,15 @@ async def get_current_user(
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        user_id: str = payload.get("sub")
+        if user_id is None:
             raise credentials_exception
-        token_data = TokenData(username=username)
-    except JWTError:
+        token_data = TokenData(user_id=user_id)
+    except JWTError as e:
+        print(e)
         raise credentials_exception
 
-    current_user = await get_user_by_username(username=token_data.username, session=db)
+    current_user = await get_user(session=db, user_id=token_data.user_id)
 
     if not current_user:
         raise credentials_exception

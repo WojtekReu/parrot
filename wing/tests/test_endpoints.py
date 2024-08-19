@@ -600,6 +600,7 @@ class TestUserRouter(BaseTestRouter):
         response = await client.put(
             "/api/v2/users/3",
             json={
+                "username": "bkupicki",
                 "first_name": "Bonifacy",
                 "last_name": "Kupicki",
             },
@@ -607,6 +608,7 @@ class TestUserRouter(BaseTestRouter):
         assert response.status_code == 200
 
         data = response.json()
+        assert data["username"] == "bkupicki"
         assert data["first_name"] == "Bonifacy"
         assert data["last_name"] == "Kupicki"
         assert isinstance(data["id"], int)
