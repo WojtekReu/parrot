@@ -404,6 +404,19 @@ class TestFlashcardRouter(BaseTestRouter):
         assert data["keyword"] == "repudiate"
         assert data["translations"] == ["odrzucać"]
 
+    async def test_delete_flashcard(self, client):
+        await owner(client)
+        response_prepare = await client.post(
+            "/api/v2/flashcards/", json={"keyword": "to delete", "translations": ["do usunięcia"]}
+        )
+        flashcard_id = response_prepare.json()["id"]
+        response = await client.delete(f"/api/v2/flashcards/{flashcard_id}")
+        assert response.status_code == 202
+
+        get_response = await client.get(f"/api/v2/flashcard/{flashcard_id}")
+        data = get_response.json()
+        assert data["detail"] == "Not Found"
+
     async def test_flashcard_join_to_sentences(self, client):
         await owner(client)
         response = await client.post(

@@ -13,6 +13,7 @@ from wing.crud.flashcard import (
     get_flashcards_by_keyword,
     flashcard_join_to_words,
     flashcard_separate_words,
+    delete_flashcard,
 )
 from wing.db.session import get_session
 from wing.models.flashcard import Flashcard, FlashcardCreate, FlashcardUpdate
@@ -118,6 +119,19 @@ async def update_flashcard_route(
         session=db, flashcard_id=flashcard_id, user_id=current_user.id, flashcard=flashcard
     )
 
+
+@router.delete(
+    "/{flashcard_id}",
+    summary="Delete flashcard",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(get_current_user)],
+)
+async def delete_flashcard_route(
+    flashcard_id: int,
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> int:
+    return await delete_flashcard(session=db, flashcard_id=flashcard_id, user_id=current_user.id)
 
 @router.get(
     "/{flashcard_id}/words",

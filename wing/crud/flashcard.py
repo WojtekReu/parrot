@@ -123,13 +123,9 @@ async def get_flashcard_words(
     )
 
 
-async def delete_flashcard(session: AsyncSession, flashcard_id: int) -> int:
-    query1 = delete(FlashcardWord).where(FlashcardWord.flashcard_id == flashcard_id)
-    query2 = delete(SentenceFlashcard).where(SentenceFlashcard.flashcard_id == flashcard_id)
-    query3 = delete(Flashcard).where(Flashcard.id == flashcard_id)
-    await session.execute(query1)
-    await session.execute(query2)
-    response = await session.execute(query3)
+async def delete_flashcard(session: AsyncSession, flashcard_id: int, user_id: int) -> int:
+    query = delete(Flashcard).where(Flashcard.id == flashcard_id, Flashcard.user_id == user_id)
+    response = await session.execute(query)
     await session.commit()
     return response.rowcount
 

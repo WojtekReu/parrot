@@ -16,6 +16,7 @@ from wing.crud.flashcard import (
     flashcard_join_to_words,
     get_flashcard_words,
     flashcard_separate_words,
+    delete_flashcard,
 )
 from wing.crud.sentence import (
     create_sentence,
@@ -655,6 +656,20 @@ async def test_update_flashcard(session: AsyncSession):
     )
     assert flashcard_updated.keyword == flashcard.keyword
     assert flashcard_updated.translations == ["niejednoznaczny"]
+
+
+@pytest.mark.asyncio
+async def test_delete_flashcard(session: AsyncSession):
+    user = await get_user(session, 1)
+    flashcard = await create_flashcard(
+        session,
+        FlashcardCreate(user_id=user.id, keyword="I remove", translations=["usuwam"]),
+        user.id,
+    )
+    deleted_count = await delete_flashcard(session, flashcard.id, user.id)
+    assert deleted_count == 1
+    result = await get_flashcard(session, flashcard.id, user.id)
+    assert result is None
 
 
 @patch("wing.crud.word.find_definition")
