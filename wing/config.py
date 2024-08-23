@@ -8,7 +8,7 @@ DOTENV_FILE = Path(".env")  # .env file in main project directory: parrot/.env
 
 
 class Settings(BaseSettings):
-    VERSION: str = Field("0.0.2")
+    VERSION: str = Field("0.0.3")
     PROJECT_NAME: str = Field("Flashcards for books")
     # API should use subdomain for PROJECT_DOMAIN ex. for example.com API should be api.example.com
     PROJECT_DOMAIN: str = Field("localhost", env="PROJECT_DOMAIN")
@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     # Configuration vocabulary container
     VOCABULARY_HOST: str = Field("parrot-vocabulary-1", env="VOCABULARY_HOST")
     VOCABULARY_PORT: int = Field(2630, env="VOCABULARY_PORT")
-    VOCABULARY_BASE: str = Field("vocabulary.pkl", env="VOCABULARY_BASE")
+    VOCABULARY_BASE: str = Field("../../data/vocabulary.pkl", env="VOCABULARY_BASE")
     VOCABULARY_CONNECTIONS_NUMBER: int = Field(1, env="VOCABULARY_CONNECTIONS_NUMBER")
 
     # setting dictionary English to Polish, unix command: dict -D

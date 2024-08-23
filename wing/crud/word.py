@@ -11,7 +11,8 @@ from wing.models.flashcard_word import FlashcardWord
 from wing.models.sentence import Sentence
 from wing.models.sentence_word import SentenceWord
 from wing.models.word import Word, WordCreate, WordUpdate, WordFind
-from wing.ask_ml import find_definition
+# from wing.ask_ml import find_definition
+from wing.definitions import definitions
 
 DEFAULT_WORDS_LIMIT = 10
 
@@ -168,7 +169,7 @@ async def find_synset(session: AsyncSession, word_id: int, sentence_id: int) -> 
         sentence = await get_sentence(session=session, sentence_id=sentence_id)
         synsets = error_message = ""
         try:
-            result = find_definition(word.lem, sentence.sentence)
+            result = definitions.find_definition(word.lem, sentence.sentence)
             synsets = result["synsets"]
         except ConnectionRefusedError as e:
             error_message = str(e)

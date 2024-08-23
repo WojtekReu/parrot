@@ -289,18 +289,7 @@ class TestWordRouter(BaseTestRouter):
         assert response.status_code == 202
         assert response.text == "1"
 
-    @patch("wing.crud.word.find_definition")
-    async def test_find_definition(self, find_definition_mock, client):
-        find_definition_mock.return_value = {
-            "found": 1,
-            "word": "brooch",
-            "synsets": [
-                (False, "brooch.n.01", "a decorative pin worn by women"),
-                (True, "brooch.v.01", "fasten with or as if with a brooch"),
-            ],
-            "matched_synset": "brooch.v.01",
-        }
-
+    async def test_find_definition(self, client):
         response = await client.get(
             f"/api/v2/words/4/sentences/3/synset",
         )
@@ -310,7 +299,7 @@ class TestWordRouter(BaseTestRouter):
             "errorMessage": "",
             "synsets": [
                 [False, "brooch.n.01", "a decorative pin worn by women"],
-                [True, "brooch.v.01", "fasten with or as if with a brooch"],
+                [False, "brooch.v.01", "fasten with or as if with a brooch"],
             ],
             "word": {
                 "count": 0,

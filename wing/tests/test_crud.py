@@ -672,35 +672,25 @@ async def test_delete_flashcard(session: AsyncSession):
     assert result is None
 
 
-@patch("wing.crud.word.find_definition")
 @pytest.mark.asyncio
-async def test_find_synset(find_definition_mock, session: AsyncSession):
+async def test_find_synset(session: AsyncSession):
     word = await get_word(session, 4)  # brooch
     sentence = await get_sentence(session, 3)  # ...little brooch...
 
-    find_definition_mock.return_value = {
-        "found": 1,
-        "word": "brooch",
-        "synsets": [
-            [False, "brooch.n.01", "a decorative pin worn by women"],
-            [True, "brooch.v.01", "fasten with or as if with a brooch"],
-        ],
-        "matched_synset": "brooch.v.01",
-    }
     result = await find_synset(session, word.id, sentence.id)
 
     expected = {
         "errorMessage": "",
         "synsets": [
-            [False, "brooch.n.01", "a decorative pin worn by women"],
-            [True, "brooch.v.01", "fasten with or as if with a brooch"],
+            (False, "brooch.n.01", "a decorative pin worn by women"),
+            (False, "brooch.v.01", "fasten with or as if with a brooch"),
         ],
         "word": Word(
-            pos="n",
-            synset="",
-            lem="brooch",
             count=0,
             declination={"NNS": "brooches"},
+            synset="",
+            pos="n",
+            lem="brooch",
             definition="",
             id=4,
         ),

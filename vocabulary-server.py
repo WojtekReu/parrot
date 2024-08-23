@@ -13,7 +13,7 @@ import types
 import nltk.corpus
 import typer
 
-from train_network import word_definition_features
+from wing.definition_feature_functions import word_definition_features
 from wing.config import settings
 
 logging.basicConfig(encoding='utf-8', level=logging.INFO)

@@ -12,6 +12,7 @@ from nltk.corpus import wordnet
 
 from wing.crud.word import get_words
 from wing.db.session import get_session
+from wing.definition_feature_functions import word_definition_features
 from wing.models import *
 
 
@@ -42,14 +43,6 @@ async def async_main():
                 )
 
     return synsets_dict
-
-
-def word_definition_features(sentence: str, keyword: str):
-    features = {}
-    for word in sentence.replace(",", "").replace(";", "").split():
-        if word != keyword and 2 < len(word) and "'" not in word:
-            features[word.lower()] = True
-    return features
 
 
 if __name__ == "__main__":
