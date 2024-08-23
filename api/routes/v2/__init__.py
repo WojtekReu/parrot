@@ -10,7 +10,6 @@ routes = (
     "sentence",
     "user",
     "word",
-    "dictionary",
     "translation",
 )
 

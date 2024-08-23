@@ -633,11 +633,11 @@ class TestDictionaryRouter(BaseTestRouter):
     router = api_router
 
     async def test_get_translation(self, client):
-        response = await client.get(f"/api/v2/dictionary/find/equivocal")
+        response = await client.get(f"/api/v2/translation/dict/equivocal")
         assert response.status_code == 200
         assert response.json() == {
             "word": "equivocal",
-            "translation": "equivocal /ɪˈkwɪvəkəl/ <Adj>\n  dwuznaczny, niejednoznaczny",
+            "definition": "equivocal /ɪˈkwɪvəkəl/ <Adj>\n  dwuznaczny, niejednoznaczny",
         }
 
 
