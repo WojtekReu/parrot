@@ -37,5 +37,20 @@ class Definitions:
             )
         return response
 
+    def search_in_nltk(self, word: str) -> dict:
+        response = {
+            "found": 0,
+            "word": word,
+            "synsets": []
+        }
+        for synset in nltk.corpus.wordnet.synsets(word):
+            word_dict = {}
+            word_dict['name'] = synset.name()
+            word_dict['definition'] = synset.definition()
+            word_dict['pol'] = ", ".join([l.name() for l in synset.lemmas(lang='pol')])
+            response["synsets"].append(word_dict)
+
+        return response
+
 definitions = Definitions()
 definitions.load(settings.VOCABULARY_BASE)

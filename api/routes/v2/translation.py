@@ -1,6 +1,7 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from wing.definitions import definitions
 from wing.crud.translation import get_translation_by_word
 from wing.db.session import get_session
 from wing.dictionary import find_translations
@@ -43,3 +44,12 @@ async def find_translations_route(word_str: str) -> Translation:
             detail="Translation not found in external dictionary.",
         )
     return Translation(word=word_str, definition=translation_str)
+
+@router.get(
+    "/synsets/{word_str}",
+    summary="Find synsets for the word",
+    status_code=status.HTTP_200_OK,
+    response_model=dict,
+)
+async def find_synset_route(word_str: str) -> dict:
+    return definitions.search_in_nltk(word_str)
