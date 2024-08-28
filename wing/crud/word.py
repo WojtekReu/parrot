@@ -23,8 +23,12 @@ async def get_word(session: AsyncSession, word_id: int) -> Word:
     return response.scalar_one_or_none()
 
 
-async def get_words(session: AsyncSession, limit: int = DEFAULT_WORDS_LIMIT) -> ScalarResult[str]:
-    query = select(distinct(Word.lem)).limit(limit)
+async def get_words(
+    session: AsyncSession, limit: int = DEFAULT_WORDS_LIMIT, has_synset: bool = None
+) -> ScalarResult[Word]:
+    query = select(Word).limit(limit)
+    if has_synset is not None:
+        query = query.where(Word.synset != None)
     response = await session.execute(query)
     return response.scalars()
 
