@@ -106,6 +106,8 @@ async def get_sentences_with_phrase_for_user(
     phrase: str,
     user_id: int | None = None,
 ) -> ScalarResult[Sentence]:
+    if not phrase:
+        return []
     query1 = (
         select(Book.id)
         .join(CurrentlyReading)
@@ -116,7 +118,7 @@ async def get_sentences_with_phrase_for_user(
     book_ids = (await session.execute(query1)).scalars().all()
     query = (
         select(Sentence)
-        .where(Sentence.sentence.icontains(phrase), Sentence.id.in_(book_ids))
+        .where(Sentence.sentence.icontains(phrase), Sentence.book_id.in_(book_ids))
         .order_by(Sentence.nr)
     )
     response = await session.execute(query)
