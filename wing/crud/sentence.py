@@ -9,6 +9,8 @@ from wing.models.flashcard import Flashcard
 from wing.models.sentence import Sentence, SentenceCreate
 from wing.models.sentence_word import SentenceWord
 from wing.models.sentence_flashcard import SentenceFlashcard
+from wing.models.currently_reading import CurrentlyReading
+from wing.models.user import User
 from wing.models.word import Word
 
 
@@ -90,10 +92,32 @@ async def count_sentences_for_book(session: AsyncSession, book_id: int) -> int:
 
 
 async def get_sentences_with_phrase(
-    session: AsyncSession, phrase: str, book_id: [int] = None
+    session: AsyncSession, phrase: str, book_id: int | None = None
 ) -> ScalarResult[Sentence]:
     query = select(Sentence).where(Sentence.sentence.icontains(phrase)).order_by(Sentence.nr)
     if book_id:
         query = query.where(Sentence.book_id == book_id)
+    response = await session.execute(query)
+    return response.scalars()
+
+
+async def get_sentences_with_phrase_for_user(
+    session: AsyncSession,
+    phrase: str,
+    user_id: int | None = None,
+) -> ScalarResult[Sentence]:
+    query1 = (
+        select(Book.id)
+        .join(CurrentlyReading)
+        .where(Book.user_id == user_id)
+        .where(CurrentlyReading.book_id == Book.id)
+        .where(CurrentlyReading.user_id == User.id)
+    )
+    book_ids = (await session.execute(query1)).scalars().all()
+    query = (
+        select(Sentence)
+        .where(Sentence.sentence.icontains(phrase), Sentence.id.in_(book_ids))
+        .order_by(Sentence.nr)
+    )
     response = await session.execute(query)
     return response.scalars()

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, status, Depends, HTTPException
+from sqlalchemy import ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from wing.auth.jwthandler import get_current_user
@@ -6,6 +7,7 @@ from wing.crud.book import get_book
 from wing.crud.sentence import (
     create_sentence,
     get_sentence,
+    get_sentences_with_phrase_for_user,
 )
 from wing.db.session import get_session
 from wing.models.sentence import Sentence, SentenceCreate
@@ -35,6 +37,21 @@ async def create_sentence_route(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Book not found by id: {data.book_id}"
         )
     return await create_sentence(session=db, sentence=data)
+
+
+@router.get(
+    "/search",
+    summary="Search book sentences for given phrase.",
+    status_code=status.HTTP_200_OK,
+    response_model=list[Sentence],
+    dependencies=[Depends(get_current_user)],
+)
+async def search_sentences_route(
+    current_user: UserPublic = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+    q: str | None = None
+) -> ScalarResult[Sentence]:
+    return await get_sentences_with_phrase_for_user(db, q, current_user.id)
 
 
 @router.get(

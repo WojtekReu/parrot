@@ -480,6 +480,26 @@ class TestFlashcardRouter(BaseTestRouter):
 
 
 @pytest.mark.asyncio
+class TestSentenceRouter(BaseTestRouter):
+    router = api_router
+
+    async def test_search_sentences(self, client):
+        await owner(client)
+        response = await client.get("/api/v2/sentences/search", params={"q": "stress"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data == [
+            {
+                "book_id": 1,
+                "id": 1,
+                "nr": 1,
+                "sentence": "Words of two or three syllables, with the stress distributed "
+                "equally between the first syllable and the last.",
+            }
+        ]
+
+
+@pytest.mark.asyncio
 class TestUserRouter(BaseTestRouter):
     router = api_router
 
