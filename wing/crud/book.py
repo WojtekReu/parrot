@@ -25,6 +25,16 @@ async def find_books(session: AsyncSession, book: BookFind) -> Page[Book]:
     return await paginate(session, query)
 
 
+async def find_books_no_pagination(session: AsyncSession, book: BookFind) -> ScalarResult[Book]:
+    query = select(Book).order_by(Book.id)
+
+    for attr_name, value in book.dict(exclude_unset=True).items():
+        query = query.where(getattr(Book, attr_name) == value)
+
+    response = await session.execute(query)
+    return response.scalars()
+
+
 async def create_book(session: AsyncSession, book: BookCreate, user_id: int) -> Book:
     db_book = Book(**book.dict())
     db_book.user_id = user_id
