@@ -1,9 +1,14 @@
 import json
+import logging
 import re
 
 import requests
 
+from wing.config import settings
 from wing.logging import write_logs
+
+logging.basicConfig(encoding="utf-8", level=settings.LOGGING_LEVEL)
+logger = logging.getLogger(__name__)
 
 
 def cut_html(source: str) -> str:
@@ -26,18 +31,18 @@ def translate(api_url: str, headers: dict, log_output: bool) -> list[tuple[str, 
     )
 
     if response.status_code == 204:
-        print(f"{api_url = }")
-        print("Response status: 204 No content")
+        logger.info(f"{api_url = }")
+        logger.info("Response status: 204 No content")
         return []
 
     elif response.status_code == 403:
-        print(f"{api_url = }")
-        print("Response status: 404 - Forbidden")
+        logger.error(f"{api_url = }")
+        logger.error("Response status: 404 - Forbidden")
         return []
 
     elif response.status_code == 504:
-        print(f"{api_url = }")
-        print("Response status: 504 - server has problem. Try later.")
+        logger.error(f"{api_url = }")
+        logger.error("Response status: 504 - server has problem. Try later.")
         if log_output and response.text:
             logs = {
                 "url": api_url,
@@ -47,8 +52,8 @@ def translate(api_url: str, headers: dict, log_output: bool) -> list[tuple[str, 
         return []
 
     elif response.status_code != 200:
-        print(f"{api_url = }")
-        print(f"Response status: {response.status_code}")
+        logger.info(f"{api_url = }")
+        logger.info(f"Response status: {response.status_code}")
         if log_output and response.text:
             logs = {
                 "url": api_url,
@@ -62,7 +67,7 @@ def translate(api_url: str, headers: dict, log_output: bool) -> list[tuple[str, 
             write_logs(response_json[0])
 
     except TypeError:
-        print(response.raw)
+        logger.error(response.raw)
         raise TypeError(response.raw)
 
     translations = []

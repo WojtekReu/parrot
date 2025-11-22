@@ -5,14 +5,14 @@ import socket
 import types
 from wing.config import settings
 
-logging.basicConfig(encoding='utf-8', level=logging.INFO)
+logging.basicConfig(encoding='utf-8', level=settings.LOGGING_LEVEL)
 logger = logging.getLogger(__name__)
 
 
 def start_connections(sel, host, port, num_conns, word):
     server_addr = (host, port)
     for connid in range(1, num_conns + 1):
-        # print(f"Starting connection {connid} to {server_addr}")
+        logger.debug(f"Starting connection {connid} to {server_addr}")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setblocking(False)
         sock.connect_ex(server_addr)
@@ -34,11 +34,11 @@ def service_connection(sel, key, mask):
     if mask & selectors.EVENT_READ:
         recv_data = sock.recv(1024)  # Should be ready to read
         if recv_data:
-            # print(f"Received {recv_data!r} from connection {data.connid}")
+            logger.debug(f"Received {recv_data!r} from connection {data.connid}")
             data.recv_total += len(recv_data)
             data.received += recv_data
         if not recv_data or recv_data.endswith(b"\x00"):
-            # print(f"Closing connection {data.connid}")
+            logger.debug(f"Closing connection {data.connid}")
             data.received = data.received.strip(b"\x00")
             sel.unregister(sock)
             sock.close()
@@ -47,7 +47,7 @@ def service_connection(sel, key, mask):
             data.outb = data.messages
             data.messages = b""
         if data.outb:
-            # print(f"Sending {data.outb!r} to connection {data.connid}")
+            logger.debug(f"Sending {data.outb!r} to connection {data.connid}")
             sent = sock.send(data.outb)  # Should be ready to write
             data.outb = data.outb[sent:]
 
@@ -78,6 +78,6 @@ def find_definition(word: str, sentence: str) -> [tuple[str, str]]:
         logger.info("Breaking by keyboard interrupt, exiting")
     finally:
         sel.close()
-    # print(f"{response_str = }")
+    logger.debug(f"{response_str = }")
     response = json.loads(response_str)
     return response

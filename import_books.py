@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import asyncio
 import csv
+import logging
 from pathlib import Path
 import typer
 
@@ -8,6 +9,9 @@ from wing.crud.book import create_book
 from wing.crud.user import create_user, get_user_by_email
 from wing.db.session import get_session
 from wing.models import *
+
+logging.basicConfig(encoding='utf-8', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 async def async_main():
@@ -31,8 +35,8 @@ async def async_main():
                 db_book = await create_book(session, book.BookCreate(
                     title = row[1],
                     author = row[2],
-                ))
-                print(db_book)
+                ), db_user.id)
+                logger.info(f"Created book '{db_book.title}'")
 
 
 def main():

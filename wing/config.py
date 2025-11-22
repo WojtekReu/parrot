@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -55,6 +56,7 @@ class Settings(BaseSettings):
     DICTIONARY_VOCABULARY: str = "fd-eng-pol"
     DICTIONARY_DEFINITION_KEY: str = "definition"
 
+    LOGGING_LEVEL: int = logging.INFO
     model_config = SettingsConfigDict(env_file=DOTENV_FILE)
 
 

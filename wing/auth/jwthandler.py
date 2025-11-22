@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -18,6 +19,9 @@ from ..models.user import UserPublic
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS512"
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+
+logging.basicConfig(encoding='utf-8', level=settings.LOGGING_LEVEL)
+logger = logging.getLogger(__name__)
 
 
 class OAuth2PasswordBearerCookie(OAuth2):
@@ -83,7 +87,7 @@ async def get_current_user(
             raise credentials_exception
         token_data = TokenData(user_id=user_id)
     except JWTError as e:
-        print(e)
+        logger.error(e)
         raise credentials_exception
 
     current_user = await get_user(session=db, user_id=token_data.user_id)
