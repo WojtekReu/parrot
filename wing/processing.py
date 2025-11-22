@@ -290,7 +290,7 @@ async def split_to_sentences(
         yield sentence
 
 
-async def load_book_content_cmd(book_path: Path, book_id: int) -> Book:
+async def load_book_content_cmd(book_path: Path, book_id: int, user_id: int) -> Book:
     """
     Load book from path, and add book.
     """
@@ -310,7 +310,7 @@ async def load_book_content_cmd(book_path: Path, book_id: int) -> Book:
     async for session in get_session():
         book.sentences_count = await count_sentences_for_book(session, book.id)
         book.words_count = await count_words_for_book(session, book.id)
-        await update_book(session, book.id, book)
+        await update_book(session, book.id, user_id, book)
 
     return book
 

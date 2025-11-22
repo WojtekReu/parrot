@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 import nltk
@@ -5,12 +6,20 @@ import pickle
 from wing.definition_feature_functions import word_definition_features
 from wing.config import settings
 
+logging.basicConfig(encoding='utf-8', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
 class Definitions:
     vocabulary = {}
 
     def load(self, vocabulary_path):
-        with open(vocabulary_path, "rb") as f:
-            self.vocabulary = pickle.load(f)
+        try:
+            with open(vocabulary_path, "rb") as f:
+                self.vocabulary = pickle.load(f)
+        except FileNotFoundError:
+            logger.warning(f"Vocabulary file not found, skipping.")
+            pass
 
     def find_definition(self, word: str, sentence: str) -> dict[str, Any]:
         response = {

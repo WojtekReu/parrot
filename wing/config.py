@@ -77,3 +77,6 @@ if settings.POSTGRES_URI:
     settings.ASYNC_POSTGRES_URI = assemble_db_connection(v=settings.POSTGRES_URI)
 else:
     settings.ASYNC_POSTGRES_URI = assemble_db_connection(values=settings.dict())
+
+import nltk
+nltk.data.path.append(settings.NLTK_DATA_PREFIX)

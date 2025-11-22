@@ -5,6 +5,11 @@ technique to increase memorization process. All you need is your book in text fo
 list of translated phrases. You can download book from https://www.gutenberg.org/ or 
 https://archive.org/
 
+## Environment
+Create file .env based on secrets.env-template
+
+    cp secrets.env-template .env
+
 ## Docker
 Run docker compose to build and run containers for project
 
@@ -20,7 +25,12 @@ Run install.py to install packages: dolch, punkt, averaged_perceptron_tagger, wo
 
     ./install.py
 
-Create database, database user and copy alembic.example.ini to alembic.ini and configure it.
+Create database user and database:
+
+    CREATE USER parrot_user WITH PASSWORD 'MOJE_TAJNE_HASŁO';
+    CREATE DATABASE parrot_database WITH OWNER parrot_user;
+
+Copy alembic.example.ini to alembic.ini and configure it.
 Run alembic migrations:
 
     alembic upgrade head
@@ -55,3 +65,7 @@ Run client based on Vue.js:
 
     cd client
     npm run serve
+
+In the browser run:
+
+    http://localhost:8080
