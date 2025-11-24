@@ -18,3 +18,4 @@ nltk.download(
 )  # Averaged Perceptron Tagger
 nltk.download("wordnet", download_dir=NLTK_DATA_PREFIX)  # A Lexical Database for English
 nltk.download('omw-1.4', download_dir=NLTK_DATA_PREFIX)  # Open Multilingual Wordnet
+nltk.download('tagsets', download_dir=NLTK_DATA_PREFIX)
